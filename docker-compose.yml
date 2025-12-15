@@ -1,0 +1,37 @@
+services:
+  # 1. Database Service
+  postgres:
+    image: postgres:15-alpine
+    container_name: qlass_db         
+    restart: always
+    ports:
+      - "${DB_PORT}:5432"
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - qlass_postgres_data:/var/lib/postgresql/data
+    networks:
+      - qlass_network                 
+
+  # 2. GUI Database Manager
+  dbgate:
+    image: dbgate/dbgate
+    container_name: qlass_dbgate
+    restart: always
+    ports:
+      - "5050:3000" 
+    volumes:
+      - qlass_dbgate_data:/root/.dbgate 
+    networks:
+      - qlass_network
+
+# 3. Define Volumes
+volumes:
+  qlass_postgres_data:
+  qlass_dbgate_data:
+
+networks:
+  qlass_network:
+    driver: bridge
