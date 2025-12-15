@@ -1,8 +1,9 @@
-package repository
+package databases
 
 import (
 	"errors"
-	"qlass-be/internal/domain"
+	"qlass-be/domain/entities"
+	"qlass-be/usecases/repositories"
 
 	"gorm.io/gorm"
 )
@@ -12,12 +13,12 @@ type postgresUserRepository struct {
 }
 
 // NewPostgresUserRepository creates a new instance of the repository
-func NewPostgresUserRepository(db *gorm.DB) domain.UserRepository {
+func NewPostgresUserRepository(db *gorm.DB) repositories.UserRepository {
 	return &postgresUserRepository{db: db}
 }
 
 // Create inserts a new user into the database
-func (r *postgresUserRepository) Create(user *domain.User) error {
+func (r *postgresUserRepository) Create(user *entities.User) error {
 	// GORM handles the SQL Insert automatically
 	if err := r.db.Create(user).Error; err != nil {
 		return err
@@ -26,8 +27,8 @@ func (r *postgresUserRepository) Create(user *domain.User) error {
 }
 
 // GetByEmail finds a user by their email address
-func (r *postgresUserRepository) GetByEmail(email string) (*domain.User, error) {
-	var user domain.User
+func (r *postgresUserRepository) GetByEmail(email string) (*entities.User, error) {
+	var user entities.User
 	
 	// SELECT * FROM users WHERE email = ? LIMIT 1
 	if err := r.db.Where("email = ?", email).First(&user).Error; err != nil {
@@ -41,8 +42,8 @@ func (r *postgresUserRepository) GetByEmail(email string) (*domain.User, error) 
 }
 
 // GetByID finds a user by their primary key ID
-func (r *postgresUserRepository) GetByID(id uint) (*domain.User, error) {
-	var user domain.User
+func (r *postgresUserRepository) GetByID(id uint) (*entities.User, error) {
+	var user entities.User
 	
 	// SELECT * FROM users WHERE id = ?
 	if err := r.db.First(&user, id).Error; err != nil {
@@ -53,4 +54,15 @@ func (r *postgresUserRepository) GetByID(id uint) (*domain.User, error) {
 	}
 	
 	return &user, nil
+}
+
+func (r *postgresUserRepository) GetByUUID(uuid string) (*entities.User, error) {
+    var user entities.User
+    // We only need the ID, so we select only that to be fast
+    if err := r.db.Select("id").Where("uuid = ?", uuid).First(&user).Error; err != nil {
+		
+        return nil, err
+    }
+
+    return &user, nil
 }

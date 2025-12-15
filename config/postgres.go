@@ -1,15 +1,14 @@
-package database
+package config
 
 import (
 	"fmt"
 	"log"
-	"qlass-be/config"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
 
-func NewPostgresDB(cfg *config.Config) *gorm.DB {
+func NewPostgresDB(cfg *Config) *gorm.DB {
 	// 1. Build Data Source Name (DSN)
 	dsn := fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=Asia/Bangkok",
