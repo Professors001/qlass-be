@@ -29,7 +29,7 @@ func (r *postgresUserRepository) Create(user *entities.User) error {
 // GetByEmail finds a user by their email address
 func (r *postgresUserRepository) GetByEmail(email string) (*entities.User, error) {
 	var user entities.User
-	
+
 	// SELECT * FROM users WHERE email = ? LIMIT 1
 	if err := r.db.Where("email = ?", email).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -37,14 +37,14 @@ func (r *postgresUserRepository) GetByEmail(email string) (*entities.User, error
 		}
 		return nil, err
 	}
-	
+
 	return &user, nil
 }
 
 // GetByID finds a user by their primary key ID
 func (r *postgresUserRepository) GetByID(id uint) (*entities.User, error) {
 	var user entities.User
-	
+
 	// SELECT * FROM users WHERE id = ?
 	if err := r.db.First(&user, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -52,17 +52,20 @@ func (r *postgresUserRepository) GetByID(id uint) (*entities.User, error) {
 		}
 		return nil, err
 	}
-	
+
 	return &user, nil
 }
 
 func (r *postgresUserRepository) GetByUUID(uuid string) (*entities.User, error) {
-    var user entities.User
-    // We only need the ID, so we select only that to be fast
-    if err := r.db.Select("id").Where("uuid = ?", uuid).First(&user).Error; err != nil {
-		
-        return nil, err
-    }
+	var user entities.User
 
-    return &user, nil
+	// Load full user by UUID so response fields are populated
+	if err := r.db.Where("uuid = ?", uuid).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("user not found")
+		}
+		return nil, err
+	}
+
+	return &user, nil
 }

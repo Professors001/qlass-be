@@ -24,6 +24,7 @@ func SetUpRouters(r *gin.Engine, db *gorm.DB) {
 	})
 
 	// Users
-	r.POST("/register", handler.UserHandler.Register)
-	r.GET("/users/:uuid", handler.UserHandler.GetUser)
+	userRouter := r.Group("/users")
+	userRouter.POST("/register", handler.UserHandler.Register)
+	userRouter.GET("/:uuid", handler.UserHandler.GetUser)
 }
