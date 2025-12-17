@@ -20,7 +20,7 @@ func SetUpRouters(r *gin.Engine, db *gorm.DB) {
 	handler := api.ProvideHandler(userHandler)
 
 	r.GET("/", func(c *gin.Context) {
-		c.String(http.StatusOK, "Qlass Backend is running!")
+		c.String(http.StatusOK, "Qlass Backend is still running!")
 	})
 
 	// Users
