@@ -1,7 +1,7 @@
-package request
+package dtos
 
 // RegisterRequest defines the payload for user registration
-type RegisterRequest struct {
+type RegisterRequestDto struct {
 	Email     string `json:"email" binding:"required,email"`
 	Password  string `json:"password" binding:"required,min=6"`
 	FirstName string `json:"first_name" binding:"required"`
@@ -9,7 +9,7 @@ type RegisterRequest struct {
 }
 
 // UpdateUserRequest (Example for later)
-type UpdateUserRequest struct {
+type UpdateUserRequestDto struct {
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
 	ProfileImg string `json:"profile_img_url"`

@@ -2,8 +2,7 @@ package rest
 
 import (
 	"net/http"
-	"qlass-be/domain/dto/request"
-	"qlass-be/domain/dto/response"
+	"qlass-be/adapters/api/rest/dtos"
 	"qlass-be/domain/entities"
 	"qlass-be/usecases"
 
@@ -22,7 +21,7 @@ func NewUserHandler(userUseCase usecases.UserUseCase) *UserHandler {
 
 func (h *UserHandler) Register(c *gin.Context) {
 	// 1. Bind DTO
-	var req request.RegisterRequest
+	var req dtos.RegisterRequestDto
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -42,7 +41,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 	}
 
 	// 4. Respond with DTO (Hide sensitive data)
-	response := response.ToUserResponse(&user)
+	response := dtos.ToUserResponse(&user)
 	c.JSON(http.StatusCreated, response)
 }
 
@@ -56,7 +55,7 @@ func (h *UserHandler) GetUser(c *gin.Context) {
 	}
 
 	// Clean conversion Domain -> DTO
-	
-	response := response.ToUserResponse(user)
+
+	response := dtos.ToUserResponse(user)
 	c.JSON(http.StatusOK, response)
 }

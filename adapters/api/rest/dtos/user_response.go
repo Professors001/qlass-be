@@ -1,4 +1,4 @@
-package response
+package dtos
 
 import (
 	"qlass-be/domain/entities"
@@ -6,7 +6,7 @@ import (
 )
 
 // UserResponse sanitizes the domain entity for public view
-type UserResponse struct {
+type UserResponseDto struct {
 	UUID          string    `json:"uuid"`
 	UniversityID  *string   `json:"university_id,omitempty"` // omitempty hides it if null
 	Email         string    `json:"email"`
@@ -20,8 +20,8 @@ type UserResponse struct {
 
 // Helper function to convert Domain -> DTO
 // This keeps the conversion logic out of the handler!
-func ToUserResponse(u *entities.User) UserResponse {
-	return UserResponse{
+func ToUserResponse(u *entities.User) UserResponseDto {
+	return UserResponseDto{
 		UUID:          u.UUID,
 		UniversityID:  u.UniversityID,
 		Email:         u.Email,

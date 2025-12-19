@@ -3,7 +3,7 @@ package databases
 import (
 	"errors"
 	"qlass-be/domain/entities"
-	"qlass-be/usecases/repositories"
+	"qlass-be/domain/repositories"
 
 	"gorm.io/gorm"
 )

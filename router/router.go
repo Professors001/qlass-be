@@ -1,4 +1,4 @@
-package rounter
+package router
 
 import (
 	"net/http"

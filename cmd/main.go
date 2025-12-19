@@ -6,7 +6,7 @@ import (
 
 	"qlass-be/config"
 	"qlass-be/domain/entities"
-	"qlass-be/rounter"
+	"qlass-be/router"
 
 	"github.com/gin-gonic/gin"
 )
@@ -22,7 +22,7 @@ func main() {
 	r := gin.Default()
 
 	// Init Routers
-	rounter.SetUpRouters(r, db)
+	router.SetUpRouters(r, db)
 
 	serverAddr := fmt.Sprintf("%s", cfg.AppPort)
 	log.Printf("🚀 Server running on port %s", serverAddr)
