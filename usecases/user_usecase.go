@@ -6,7 +6,6 @@ import (
 	"qlass-be/domain/repositories"
 	"time"
 
-	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -38,7 +37,6 @@ func (u *userUseCase) Register(user *entities.User, password string) error {
 	user.PasswordHash = string(hashedPwd)
 
 	// 3. Generate UUID and Metadata
-	user.UUID = uuid.New().String()
 	user.CreatedAt = time.Now()
 	user.UpdatedAt = time.Now()
 	user.IsActive = true

@@ -7,7 +7,6 @@ import (
 
 // UserResponse sanitizes the domain entity for public view
 type UserResponseDto struct {
-	UUID          string    `json:"uuid"`
 	UniversityID  *string   `json:"university_id,omitempty"` // omitempty hides it if null
 	Email         string    `json:"email"`
 	FirstName     string    `json:"first_name"`
@@ -22,7 +21,6 @@ type UserResponseDto struct {
 // This keeps the conversion logic out of the handler!
 func ToUserResponse(u *entities.User) UserResponseDto {
 	return UserResponseDto{
-		UUID:          u.UUID,
 		UniversityID:  u.UniversityID,
 		Email:         u.Email,
 		FirstName:     u.FirstName,
