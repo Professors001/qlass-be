@@ -16,7 +16,11 @@ func main() {
 	db := config.NewPostgresDB(cfg)
 
 	// Migration
-	db.AutoMigrate(&entities.User{})
+	db.AutoMigrate(
+		&entities.User{}, &entities.Class{}, &entities.ClassEnrollment{},
+		&entities.CourseMaterial{}, &entities.Attachment{},
+		&entities.Quiz{}, &entities.QuizQuestion{}, &entities.QuizOption{},
+		&entities.QuizGameLog{}, &entities.Submission{})
 
 	// Init Gin Framework
 	r := gin.Default()

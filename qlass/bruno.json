@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "qlass",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}
