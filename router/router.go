@@ -20,7 +20,7 @@ func SetUpRouters(r *gin.Engine, db *gorm.DB) {
 	handler := api.ProvideHandler(userHandler)
 
 	r.GET("/", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"message": "Welcome to Qlass API"})
+		c.JSON(http.StatusOK, gin.H{"message": "Qlass BE is still running!"})
 	})
 
 	// Users

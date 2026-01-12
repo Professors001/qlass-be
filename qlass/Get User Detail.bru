@@ -1,0 +1,15 @@
+meta {
+  name: Get User Detail
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{base_url}}/users/id
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+}

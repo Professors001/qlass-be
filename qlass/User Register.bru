@@ -1,0 +1,25 @@
+meta {
+  name: User Register
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/users/register
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "email": "user_a@gmail.com",
+    "password": "123456",
+    "first_name": "Charles",
+    "last_name": "Smith"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
