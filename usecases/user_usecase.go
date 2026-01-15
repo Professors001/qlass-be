@@ -12,7 +12,7 @@ import (
 type UserUseCase interface {
 	Register(user *entities.User, password string) error
 	GetUserByID(id uint) (*entities.User, error)
-	GetUserByUUID(uuid string) (*entities.User, error)
+	GetUserByUID(uuid string) (*entities.User, error)
 }
 
 type userUseCase struct {
@@ -50,6 +50,6 @@ func (u *userUseCase) GetUserByID(id uint) (*entities.User, error) {
 	return u.userRepo.GetByID(id)
 }
 
-func (u *userUseCase) GetUserByUUID(uuid string) (*entities.User, error) {
-	return u.userRepo.GetByUUID(uuid)
+func (u *userUseCase) GetUserByUID(uuid string) (*entities.User, error) {
+	return u.userRepo.GetByUID(uuid)
 }

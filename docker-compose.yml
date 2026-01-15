@@ -27,10 +27,29 @@ services:
     networks:
       - qlass_network
 
+  # 3. Redis Cache Service
+  redis:
+    image: redis:7-alpine
+    container_name: qlass_redis
+    restart: always
+    ports:
+      - "${REDIS_PORT}:6379"
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - qlass_redis_data:/data
+    networks:
+      - qlass_network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
 # 3. Define Volumes
 volumes:
   qlass_postgres_data:
   qlass_dbgate_data:
+  qlass_redis_data:
 
 networks:
   qlass_network:

@@ -56,7 +56,7 @@ func (r *postgresUserRepository) GetByID(id uint) (*entities.User, error) {
 	return &user, nil
 }
 
-func (r *postgresUserRepository) GetByUUID(uuid string) (*entities.User, error) {
+func (r *postgresUserRepository) GetByUID(uuid string) (*entities.User, error) {
 	var user entities.User
 
 	// Load full user by UUID so response fields are populated

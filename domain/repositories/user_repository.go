@@ -6,5 +6,5 @@ type UserRepository interface {
 	Create(user *entities.User) error
 	GetByEmail(email string) (*entities.User, error)
 	GetByID(id uint) (*entities.User, error)
-	GetByUUID(uuid string) (*entities.User, error)
+	GetByUID(uuid string) (*entities.User, error)
 }

@@ -5,13 +5,14 @@ import (
 	"qlass-be/adapters/api"
 	"qlass-be/adapters/api/rest"
 	"qlass-be/adapters/databases"
+	"qlass-be/config"
 	"qlass-be/usecases"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
-func SetUpRouters(r *gin.Engine, db *gorm.DB) {
+func SetUpRouters(r *gin.Engine, db *gorm.DB, cache *config.CacheService) {
 
 	userRepo := databases.NewPostgresUserRepository(db)
 	userUseCase := usecases.NewUserUseCase(userRepo)
