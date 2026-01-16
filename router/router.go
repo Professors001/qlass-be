@@ -32,4 +32,5 @@ func SetUpRouters(r *gin.Engine, db *gorm.DB, cache *cache.CacheHelper, jwtServi
 	userRouter.POST("/register-step-one", handler.UserHandler.RegisterFirstStep)
 	userRouter.POST("/register-step-two", handler.UserHandler.RegisterSecondStep)
 	userRouter.POST("/login", handler.UserHandler.Login)
+	userRouter.GET("/me", middleware.AuthorizeJWT(jwtService), handler.UserHandler.Me)
 }

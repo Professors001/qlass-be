@@ -72,3 +72,12 @@ func (h *UserHandler) Login(c *gin.Context) {
 
 	c.JSON(http.StatusOK, res)
 }
+
+func (h *UserHandler) Me(c *gin.Context) {
+	user, exists := c.Get("currentUser")
+	if !exists {
+		utils.SendError(c, http.StatusUnauthorized, "UNAUTHORIZED", "No user found in context")
+		return
+	}
+	c.JSON(http.StatusOK, user)
+}

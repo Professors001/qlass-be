@@ -2,9 +2,12 @@ package middleware
 
 import (
 	"errors"
+	"net/http"
 	"qlass-be/config"
+	"strings"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -19,8 +22,8 @@ type jwtService struct {
 }
 
 type JWTCustomClaims struct {
-	UniversityID string `json:"university_id"`
-	Role         string `json:"role"`
+	UserId string `json:"user_id"`
+	Role   string `json:"role"`
 	jwt.RegisteredClaims
 }
 
@@ -57,4 +60,24 @@ func (s *jwtService) ValidateToken(tokenString string) (*JWTCustomClaims, error)
 		return claims, nil
 	}
 	return nil, errors.New("invalid token")
+}
+
+func AuthorizeJWT(jwtService JwtService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "No token found"})
+			return
+		}
+
+		tokenString := strings.TrimSpace(strings.TrimPrefix(authHeader, "Bearer"))
+		claims, err := jwtService.ValidateToken(tokenString)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token", "details": err.Error()})
+			return
+		}
+
+		c.Set("currentUser", claims)
+		c.Next()
+	}
 }
