@@ -39,13 +39,21 @@ services:
     restart: always
     ports:
       - "${REDIS_PORT}:6379"
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    environment:
+      REDIS_USERNAME: ${REDIS_USERNAME}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    command: >
+      /bin/sh -c "
+      echo 'user default on >${REDIS_PASSWORD} ~* +@all' > /data/users.acl &&
+      if [ -n '${REDIS_USERNAME}' ] && [ '${REDIS_USERNAME}' != 'default' ]; then echo 'user ${REDIS_USERNAME} on >${REDIS_PASSWORD} ~* +@all' >> /data/users.acl; fi &&
+      redis-server --aclfile /data/users.acl --appendonly yes
+      "
     volumes:
       - qlass_redis_data:/data
     networks:
       - qlass_network
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: [ "CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD} ping | grep PONG" ]
       interval: 5s
       timeout: 3s
       retries: 5

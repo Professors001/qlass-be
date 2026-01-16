@@ -1,18 +1,19 @@
 meta {
-  name: User Register
+  name: User Register Request Step 1
   type: http
-  seq: 2
+  seq: 4
 }
 
 post {
-  url: {{base_url}}/users/register
+  url: {{base_url}}/users/register-step-one
   body: json
   auth: inherit
 }
 
 body:json {
   {
-    "email": "user_a@gmail.com",
+    "university_id": "5410942856",
+    "email": "user_a2@gmail.com",
     "password": "123456",
     "first_name": "Charles",
     "last_name": "Smith"

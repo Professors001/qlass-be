@@ -58,5 +58,11 @@ func LoadConfig() *Config {
 		log.Fatal("❌ Database configuration is missing. Check your .env file.")
 	}
 
+	// Fix: Redis default user does not need a username.
+	// If "root" is set (common mistake), clear it to avoid WRONGPASS error.
+	if config.RedisUsername == "root" {
+		config.RedisUsername = ""
+	}
+
 	return &config
 }

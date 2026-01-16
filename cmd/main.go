@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 
@@ -16,6 +17,12 @@ func main() {
 	cfg := config.LoadConfig()
 	db := config.NewPostgresDB(cfg)
 	redisClient := config.NewRedisClient(cfg)
+
+	// Verify Redis connection
+	if err := redisClient.Ping(context.Background()).Err(); err != nil {
+		log.Fatalf("❌ Failed to connect to Redis: %v. Check REDIS_PASSWORD in .env", err)
+	}
+
 	cacheService := cache.NewCacheService(redisClient)
 	cacheHelper := cache.NewCacheHelper(cacheService)
 

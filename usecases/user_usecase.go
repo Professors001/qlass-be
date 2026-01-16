@@ -3,8 +3,10 @@ package usecases
 import (
 	"context"
 	"errors"
+	"log"
 	"qlass-be/domain/repositories"
 	"qlass-be/dtos"
+	"qlass-be/transform"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -29,6 +31,11 @@ func NewUserUseCase(repo repositories.UserRepository, cacheRepo repositories.Use
 }
 
 func (u *userUseCase) RegisterFirstStep(ctx context.Context, req *dtos.RegisterRequestStepOneDto) (*dtos.ResponseRegisterStepOneDto, error) {
+	// Check if registration is already pending in Redis
+	if _, err := u.userCacheRepo.GetRegistrationData(ctx, req.Email); err == nil {
+		return nil, errors.New("registration pending, please check your email for OTP")
+	}
+
 	// Check if user already exists
 	existingUser, _ := u.userRepo.GetByEmail(req.Email)
 	if existingUser != nil {
@@ -41,18 +48,12 @@ func (u *userUseCase) RegisterFirstStep(ctx context.Context, req *dtos.RegisterR
 		return nil, err
 	}
 
-	// Prepare data for cache (remove plain password for security)
-	reqCopy := *req
-	reqCopy.Password = ""
-
-	cacheData := map[string]interface{}{
-		"req":           reqCopy,
-		"password_hash": string(hashedPassword),
-	}
+	tempData := transform.RequestToTempRegisterDataDto(req, string(hashedPassword), "123456")
 
 	// Store into Redis with Email as key (TTL 5 minutes)
-	err = u.userCacheRepo.SetRegistrationData(ctx, req.Email, cacheData, 5*time.Minute)
+	err = u.userCacheRepo.SetRegistrationData(ctx, req.Email, tempData, 5*time.Minute)
 	if err != nil {
+		log.Println("Error storing registration data in cache:", err)
 		return nil, err
 	}
 
