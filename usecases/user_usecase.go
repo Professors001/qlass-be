@@ -6,6 +6,7 @@ import (
 	"log"
 	"qlass-be/domain/repositories"
 	"qlass-be/dtos"
+	"qlass-be/infrastructure/middleware"
 	"qlass-be/transform"
 	"time"
 
@@ -15,19 +16,20 @@ import (
 type UserUseCase interface {
 	RegisterFirstStep(ctx context.Context, req *dtos.RegisterRequestStepOneDto) (*dtos.ResponseRegisterStepOneDto, error)
 	RegisterSecondStep(ctx context.Context, req *dtos.RegisterRequestStepTwoDto) (*dtos.ResponseRegisterStepTwoDto, error)
-	// GetUserByID(id uint) (*entities.User, error)
-	// GetUserByUID(uuid string) (*entities.User, error)
+	Login(ctx context.Context, req *dtos.LoginRequestDto) (*dtos.LoginResponseDto, error)
 }
 
 type userUseCase struct {
 	userRepo      repositories.UserRepository
 	userCacheRepo repositories.UserCacheRepository
+	jwtService    middleware.JwtService
 }
 
-func NewUserUseCase(repo repositories.UserRepository, cacheRepo repositories.UserCacheRepository) UserUseCase {
+func NewUserUseCase(repo repositories.UserRepository, cacheRepo repositories.UserCacheRepository, jwtService middleware.JwtService) UserUseCase {
 	return &userUseCase{
 		userRepo:      repo,
 		userCacheRepo: cacheRepo,
+		jwtService:    jwtService,
 	}
 }
 
@@ -38,9 +40,14 @@ func (u *userUseCase) RegisterFirstStep(ctx context.Context, req *dtos.RegisterR
 	}
 
 	// Check if user already exists
-	existingUser, _ := u.userRepo.GetByEmail(req.Email)
-	if existingUser != nil {
-		return nil, errors.New("University ID or Email already exists")
+	existingUserByEmail, _ := u.userRepo.GetByEmail(req.Email)
+	if existingUserByEmail != nil {
+		return nil, errors.New("Email already exists")
+	}
+
+	existingUserByUniID, _ := u.userRepo.GetByUniID(req.UniversityID)
+	if existingUserByUniID != nil {
+		return nil, errors.New("University ID already exists")
 	}
 
 	// Hash password
@@ -91,10 +98,36 @@ func (u *userUseCase) RegisterSecondStep(ctx context.Context, req *dtos.Register
 
 }
 
-// func (u *userUseCase) GetUserByID(id uint) (*entities.User, error) {
-// 	return u.userRepo.GetByID(id)
-// }
+func (u *userUseCase) Login(ctx context.Context, req *dtos.LoginRequestDto) (*dtos.LoginResponseDto, error) {
+	// Retrieve user by email
+	user, err := u.userRepo.GetByUniID(req.UniversityID)
+	if err != nil {
+		return nil, errors.New("This Account is not registered")
+	}
 
-// func (u *userUseCase) GetUserByUID(uuid string) (*entities.User, error) {
-// 	return u.userRepo.GetByUID(uuid)
-// }
+	// Compare password
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password))
+	if err != nil {
+		return nil, errors.New("Incorrect password")
+	}
+
+	userDisplay := dtos.UserDisplayData{
+		UniversityID: user.UniversityID,
+		Email:        user.Email,
+		FirstName:    user.FirstName,
+		LastName:     user.LastName,
+		Role:         user.Role,
+	}
+
+	token, err := u.jwtService.GenerateToken(user.UniversityID, user.Role)
+	if err != nil {
+		return nil, errors.New("failed to generate token")
+	}
+
+	return &dtos.LoginResponseDto{
+		Message: "Login successful",
+		Token:   token,
+		User:    userDisplay,
+	}, nil
+}
+

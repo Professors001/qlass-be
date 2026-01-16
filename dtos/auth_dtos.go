@@ -33,3 +33,22 @@ type RegisterRequestStepTwoDto struct {
 type ResponseRegisterStepTwoDto struct {
 	Message string `json:"message"`
 }
+
+type UserDisplayData struct {
+	UniversityID string `json:"university_id"`
+	Email        string `json:"email"`
+	FirstName    string `json:"first_name"`
+	LastName     string `json:"last_name"`
+	Role         string `json:"role"`
+}
+
+type LoginRequestDto struct {
+	UniversityID string `json:"university_id" validate:"required"`
+	Password string `json:"password" validate:"required"`
+}
+
+type LoginResponseDto struct {
+	Message string `json:"message"`
+	Token string `json:"token"`
+	User UserDisplayData `json:"user"`
+}

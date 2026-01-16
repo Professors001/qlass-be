@@ -55,17 +55,20 @@ func (h *UserHandler) RegisterSecondStep(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
-// func (h *UserHandler) GetUser(c *gin.Context) {
-// 	uuid := c.Param("uuid")
+func (h *UserHandler) Login(c *gin.Context) {
+	// 1. Bind DTO
+	var req dtos.LoginRequestDto
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.SendError(c, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+		return
+	}
 
-// 	user, err := h.UseCase.GetUserByUID(uuid) // Assumes you updated UseCase to use UUID
-// 	if err != nil {
-// 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
-// 		return
-// 	}
+	// 2. Call UseCase
+	res, err := h.UseCase.Login(c.Request.Context(), &req)
+	if err != nil {
+		utils.SendError(c, http.StatusUnauthorized, "UNAUTHORIZED", err.Error())
+		return
+	}
 
-// 	// Clean conversion Domain -> DTO
-
-// 	response := transform.ToUserResponse(user)
-// 	c.JSON(http.StatusOK, response)
-// }
+	c.JSON(http.StatusOK, res)
+}

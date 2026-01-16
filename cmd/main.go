@@ -8,6 +8,7 @@ import (
 	"qlass-be/config"
 	"qlass-be/domain/entities"
 	"qlass-be/infrastructure/cache"
+	"qlass-be/infrastructure/middleware"
 	"qlass-be/router"
 
 	"github.com/gin-gonic/gin"
@@ -17,6 +18,7 @@ func main() {
 	cfg := config.LoadConfig()
 	db := config.NewPostgresDB(cfg)
 	redisClient := config.NewRedisClient(cfg)
+	jwtService := middleware.NewJWTService(cfg)
 
 	// Verify Redis connection
 	if err := redisClient.Ping(context.Background()).Err(); err != nil {
@@ -37,7 +39,7 @@ func main() {
 	r := gin.Default()
 
 	// Init Routers
-	router.SetUpRouters(r, db, cacheHelper)
+	router.SetUpRouters(r, db, cacheHelper, jwtService)
 
 	serverAddr := fmt.Sprintf("%s", cfg.AppPort)
 	log.Printf("🚀 Server running on port %s", serverAddr)

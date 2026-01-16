@@ -56,11 +56,11 @@ func (r *postgresUserRepository) GetByID(id uint) (*entities.User, error) {
 	return &user, nil
 }
 
-func (r *postgresUserRepository) GetByUID(uuid string) (*entities.User, error) {
+func (r *postgresUserRepository) GetByUniID(universityID string) (*entities.User, error) {
 	var user entities.User
 
-	// Load full user by UUID so response fields are populated
-	if err := r.db.Where("uuid = ?", uuid).First(&user).Error; err != nil {
+	// Load full user by University ID so response fields are populated
+	if err := r.db.Where("university_id = ?", universityID).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("user not found")
 		}
