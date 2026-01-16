@@ -14,6 +14,7 @@ import (
 
 type UserUseCase interface {
 	RegisterFirstStep(ctx context.Context, req *dtos.RegisterRequestStepOneDto) (*dtos.ResponseRegisterStepOneDto, error)
+	RegisterSecondStep(ctx context.Context, req *dtos.RegisterRequestStepTwoDto) (*dtos.ResponseRegisterStepTwoDto, error)
 	// GetUserByID(id uint) (*entities.User, error)
 	// GetUserByUID(uuid string) (*entities.User, error)
 }
@@ -62,6 +63,32 @@ func (u *userUseCase) RegisterFirstStep(ctx context.Context, req *dtos.RegisterR
 		RefEmail:         req.Email,
 		ExpiresInSeconds: 300,
 	}, nil
+}
+
+func (u *userUseCase) RegisterSecondStep(ctx context.Context, req *dtos.RegisterRequestStepTwoDto) (*dtos.ResponseRegisterStepTwoDto, error) {
+	// Retrieve temp data from Redis
+	tempData, err := u.userCacheRepo.GetRegistrationData(ctx, req.Email)
+	if err != nil {
+		return nil, errors.New("no pending registration found or OTP expired")
+	}
+
+	// Validate OTP
+	if tempData.OTP != req.OTP {
+		return nil, errors.New("invalid OTP")
+	}
+
+	// Create user in DB
+	newUser := transform.TempRegisterDataDtoToUserEntity(tempData)
+	err = u.userRepo.Create(newUser)
+	if err != nil {
+		log.Println("Error creating user in DB:", err)
+		return nil, err
+	}
+
+	return &dtos.ResponseRegisterStepTwoDto{
+		Message: "Registration successful",
+	}, nil
+
 }
 
 // func (u *userUseCase) GetUserByID(id uint) (*entities.User, error) {

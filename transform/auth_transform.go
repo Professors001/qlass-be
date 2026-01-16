@@ -24,3 +24,17 @@ func RequestToTempRegisterDataDto(req *dtos.RegisterRequestStepOneDto,
 	return dto
 
 }
+
+func TempRegisterDataDtoToUserEntity(dto dtos.TempRegisterDataDto) *entities.User {
+	return &entities.User{
+		UniversityID: dto.UniversityID,
+		Email:        dto.Email,
+		PasswordHash: dto.PasswordHash,
+		FirstName:    dto.FirstName,
+		LastName:     dto.LastName,
+		ProfileImgURL: "ON_HOLD",
+		Role:         dto.Role,
+		IsVerified:   true,
+		IsActive:     true,
+	}
+}

@@ -1,0 +1,23 @@
+meta {
+  name: User Register Verify OTP
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{base_url}}/users/register-step-two
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "email": "user_a2@gmail.com",
+    "otp": "123456"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

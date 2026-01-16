@@ -36,6 +36,24 @@ func (h *UserHandler) RegisterFirstStep(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
+func (h *UserHandler) RegisterSecondStep(c *gin.Context) {
+	// 1. Bind DTO
+	var req dtos.RegisterRequestStepTwoDto
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 2. Call UseCase
+	res, err := h.UseCase.RegisterSecondStep(c.Request.Context(), &req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+}
+
 // func (h *UserHandler) Register(c *gin.Context) {
 // 	// 1. Bind DTO
 // 	var req dtos.RegisterRequestDto

@@ -29,4 +29,5 @@ func SetUpRouters(r *gin.Engine, db *gorm.DB, cache *cache.CacheHelper) {
 	// Users
 	userRouter := r.Group("/users")
 	userRouter.POST("/register-step-one", handler.UserHandler.RegisterFirstStep)
+	userRouter.POST("/register-step-two", handler.UserHandler.RegisterSecondStep)
 }
