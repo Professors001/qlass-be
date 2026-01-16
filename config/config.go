@@ -2,6 +2,7 @@ package config
 
 import (
 	"log"
+
 	"github.com/spf13/viper"
 )
 
@@ -21,6 +22,7 @@ type Config struct {
 	// Redis Settings
 	RedisHost     string `mapstructure:"REDIS_HOST"`
 	RedisPort     string `mapstructure:"REDIS_PORT"`
+	RedisUsername string `mapstructure:"REDIS_USERNAME"`
 	RedisPassword string `mapstructure:"REDIS_PASSWORD"`
 	RedisDB       int    `mapstructure:"REDIS_DB"`
 

@@ -5,6 +5,7 @@ import (
 	"qlass-be/adapters/api"
 	"qlass-be/adapters/api/rest"
 	"qlass-be/adapters/databases"
+	"qlass-be/adapters/redis"
 	"qlass-be/infrastructure/cache"
 	"qlass-be/usecases"
 
@@ -12,10 +13,11 @@ import (
 	"gorm.io/gorm"
 )
 
-func SetUpRouters(r *gin.Engine, db *gorm.DB, cache *cache.CacheService) {
+func SetUpRouters(r *gin.Engine, db *gorm.DB, cache *cache.CacheHelper) {
 
 	userRepo := databases.NewPostgresUserRepository(db)
-	userUseCase := usecases.NewUserUseCase(userRepo)
+	userCacheRepo := redis.NewUserRedisRepository(cache)
+	userUseCase := usecases.NewUserUseCase(userRepo, userCacheRepo)
 	userHandler := rest.NewUserHandler(userUseCase)
 
 	handler := api.ProvideHandler(userHandler)
@@ -26,6 +28,5 @@ func SetUpRouters(r *gin.Engine, db *gorm.DB, cache *cache.CacheService) {
 
 	// Users
 	userRouter := r.Group("/users")
-	userRouter.POST("/register", handler.UserHandler.Register)
-	userRouter.GET("/:uuid", handler.UserHandler.GetUser)
+	userRouter.POST("/register-step-one", handler.UserHandler.RegisterFirstStep)
 }

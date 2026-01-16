@@ -1,55 +1,72 @@
 package usecases
 
 import (
+	"context"
 	"errors"
-	"qlass-be/domain/entities"
 	"qlass-be/domain/repositories"
+	"qlass-be/dtos"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
 type UserUseCase interface {
-	Register(user *entities.User, password string) error
-	GetUserByID(id uint) (*entities.User, error)
-	GetUserByUID(uuid string) (*entities.User, error)
+	RegisterFirstStep(ctx context.Context, req *dtos.RegisterRequestStepOneDto) (*dtos.ResponseRegisterStepOneDto, error)
+	// GetUserByID(id uint) (*entities.User, error)
+	// GetUserByUID(uuid string) (*entities.User, error)
 }
 
 type userUseCase struct {
-	userRepo repositories.UserRepository 
+	userRepo      repositories.UserRepository
+	userCacheRepo repositories.UserCacheRepository
 }
 
-func NewUserUseCase(repo repositories.UserRepository) UserUseCase {
-	return &userUseCase{userRepo: repo}
+func NewUserUseCase(repo repositories.UserRepository, cacheRepo repositories.UserCacheRepository) UserUseCase {
+	return &userUseCase{
+		userRepo:      repo,
+		userCacheRepo: cacheRepo,
+	}
 }
 
-func (u *userUseCase) Register(user *entities.User, password string) error {
-	// 1. Check if email exists (Optional, repo will error anyway, but good for UI)
-	if existingUser, _ := u.userRepo.GetByEmail(user.Email); existingUser != nil {
-		return errors.New("email already in use")
+func (u *userUseCase) RegisterFirstStep(ctx context.Context, req *dtos.RegisterRequestStepOneDto) (*dtos.ResponseRegisterStepOneDto, error) {
+	// Check if user already exists
+	existingUser, _ := u.userRepo.GetByEmail(req.Email)
+	if existingUser != nil {
+		return nil, errors.New("user with this email already exists")
 	}
 
-	// 2. Hash Password
-	hashedPwd, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	// Hash password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	user.PasswordHash = string(hashedPwd)
 
-	// 3. Generate UUID and Metadata
-	user.CreatedAt = time.Now()
-	user.UpdatedAt = time.Now()
-	user.IsActive = true
-	user.Role = "student" // Default role
+	// Prepare data for cache (remove plain password for security)
+	reqCopy := *req
+	reqCopy.Password = ""
 
-	// 4. Save to DB
-	return u.userRepo.Create(user)
+	cacheData := map[string]interface{}{
+		"req":           reqCopy,
+		"password_hash": string(hashedPassword),
+	}
+
+	// Store into Redis with Email as key (TTL 5 minutes)
+	err = u.userCacheRepo.SetRegistrationData(ctx, req.Email, cacheData, 5*time.Minute)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dtos.ResponseRegisterStepOneDto{
+		Message:          "Please proceed to step 2",
+		RefEmail:         req.Email,
+		ExpiresInSeconds: 300,
+	}, nil
 }
 
-func (u *userUseCase) GetUserByID(id uint) (*entities.User, error) {
-	return u.userRepo.GetByID(id)
-}
+// func (u *userUseCase) GetUserByID(id uint) (*entities.User, error) {
+// 	return u.userRepo.GetByID(id)
+// }
 
-func (u *userUseCase) GetUserByUID(uuid string) (*entities.User, error) {
-	return u.userRepo.GetByUID(uuid)
-}
+// func (u *userUseCase) GetUserByUID(uuid string) (*entities.User, error) {
+// 	return u.userRepo.GetByUID(uuid)
+// }

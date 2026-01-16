@@ -16,6 +16,16 @@ type ResponseRegisterStepOneDto struct {
 	ExpiresInSeconds int64 `json:"expires_in_seconds"`
 }
 
+type TempRegisterDataDto struct {
+	UniversityID string `json:"university_id"`
+	Email        string `json:"email"`
+	PasswordHash string `json:"password_hash"`
+	FirstName    string `json:"first_name"`
+	LastName     string `json:"last_name"`
+	Role         string `json:"role"`
+	OTP          string `json:"otp"`
+}
+
 type RegisterRequestStepTwoDto struct {
 	Email string `json:"email" binding:"required,email"`
 	OTP   string `json:"otp" binding:"required"`

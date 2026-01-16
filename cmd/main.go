@@ -17,7 +17,7 @@ func main() {
 	db := config.NewPostgresDB(cfg)
 	redisClient := config.NewRedisClient(cfg)
 	cacheService := cache.NewCacheService(redisClient)
-	defer cacheService.Close()
+	cacheHelper := cache.NewCacheHelper(cacheService)
 
 	// Migration
 	db.AutoMigrate(
@@ -30,7 +30,7 @@ func main() {
 	r := gin.Default()
 
 	// Init Routers
-	router.SetUpRouters(r, db, cacheService)
+	router.SetUpRouters(r, db, cacheHelper)
 
 	serverAddr := fmt.Sprintf("%s", cfg.AppPort)
 	log.Printf("🚀 Server running on port %s", serverAddr)
