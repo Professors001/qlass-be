@@ -2,6 +2,7 @@ package rest
 
 import (
 	"net/http"
+	"qlass-be/adapters/api/rest/utils"
 	"qlass-be/dtos"
 	"qlass-be/usecases"
 
@@ -22,14 +23,14 @@ func (h *UserHandler) RegisterFirstStep(c *gin.Context) {
 	// 1. Bind DTO
 	var req dtos.RegisterRequestStepOneDto
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		utils.SendError(c, http.StatusBadRequest, "BAD_REQUEST", err.Error())
 		return
 	}
 
 	// 2. Call UseCase
 	res, err := h.UseCase.RegisterFirstStep(c.Request.Context(), &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		utils.SendError(c, http.StatusBadRequest, "DUPLICATE_USER", err.Error())
 		return
 	}
 
@@ -53,32 +54,6 @@ func (h *UserHandler) RegisterSecondStep(c *gin.Context) {
 
 	c.JSON(http.StatusOK, res)
 }
-
-// func (h *UserHandler) Register(c *gin.Context) {
-// 	// 1. Bind DTO
-// 	var req dtos.RegisterRequestDto
-// 	if err := c.ShouldBindJSON(&req); err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-// 		return
-// 	}
-
-// 	// 2. Map DTO -> Domain
-// 	user := entities.User{
-// 		Email:     req.Email,
-// 		FirstName: req.FirstName,
-// 		LastName:  req.LastName,
-// 	}
-
-// 	// 3. Call Logic
-// 	if err := h.UseCase.Register(&user, req.Password); err != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-// 		return
-// 	}
-
-// 	// 4. Respond with DTO (Hide sensitive data)
-// 	response := transform.ToUserResponse(&user)
-// 	c.JSON(http.StatusCreated, response)
-// }
 
 // func (h *UserHandler) GetUser(c *gin.Context) {
 // 	uuid := c.Param("uuid")

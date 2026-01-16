@@ -40,7 +40,7 @@ func (u *userUseCase) RegisterFirstStep(ctx context.Context, req *dtos.RegisterR
 	// Check if user already exists
 	existingUser, _ := u.userRepo.GetByEmail(req.Email)
 	if existingUser != nil {
-		return nil, errors.New("user with this email already exists")
+		return nil, errors.New("University ID or Email already exists")
 	}
 
 	// Hash password
