@@ -30,13 +30,20 @@ type Config struct {
 
 // LoadConfig reads configuration from .env file or environment variables
 func LoadConfig() *Config {
-	viper.AddConfigPath(".")    // Look for config in the root directory
-	viper.SetConfigFile(".env") // Specifically look for a file named .env
-
 	viper.AutomaticEnv() // Automatically read environment variables (docker)
 
+	// 1. Try to load .env from current directory
+	viper.SetConfigFile(".env")
 	if err := viper.ReadInConfig(); err != nil {
-		log.Println("⚠️  No .env file found, relying on system environment variables")
+		// 2. If failed, try loading from parent directory (for tests)
+		viper.SetConfigFile("../.env")
+		if err := viper.ReadInConfig(); err != nil {
+			// 3. If failed, try loading from two levels up (for nested tests like infrastructure/cache)
+			viper.SetConfigFile("../../.env")
+			if err := viper.ReadInConfig(); err != nil {
+				log.Println("⚠️  No .env file found, relying on system environment variables")
+			}
+		}
 	}
 
 	var config Config

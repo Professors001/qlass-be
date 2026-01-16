@@ -10,9 +10,3 @@ type RegisterRequestDto struct {
 	Role         string `json:"role"`
 }
 
-// UpdateUserRequest (Example for later)
-type UpdateUserRequestDto struct {
-	FirstName  string `json:"first_name"`
-	LastName   string `json:"last_name"`
-	ProfileImg string `json:"profile_img_url"`
-}

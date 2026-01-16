@@ -6,6 +6,7 @@ import (
 
 	"qlass-be/config"
 	"qlass-be/domain/entities"
+	"qlass-be/infrastructure/cache"
 	"qlass-be/router"
 
 	"github.com/gin-gonic/gin"
@@ -15,7 +16,7 @@ func main() {
 	cfg := config.LoadConfig()
 	db := config.NewPostgresDB(cfg)
 	redisClient := config.NewRedisClient(cfg)
-	cacheService := config.NewCacheService(redisClient)
+	cacheService := cache.NewCacheService(redisClient)
 	defer cacheService.Close()
 
 	// Migration

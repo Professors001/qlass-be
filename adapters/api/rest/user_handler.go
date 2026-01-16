@@ -2,8 +2,9 @@ package rest
 
 import (
 	"net/http"
-	"qlass-be/adapters/api/rest/dtos"
 	"qlass-be/domain/entities"
+	"qlass-be/dtos"
+	"qlass-be/transform"
 	"qlass-be/usecases"
 
 	"github.com/gin-gonic/gin"
@@ -41,7 +42,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 	}
 
 	// 4. Respond with DTO (Hide sensitive data)
-	response := dtos.ToUserResponse(&user)
+	response := transform.ToUserResponse(&user)
 	c.JSON(http.StatusCreated, response)
 }
 
@@ -56,6 +57,6 @@ func (h *UserHandler) GetUser(c *gin.Context) {
 
 	// Clean conversion Domain -> DTO
 
-	response := dtos.ToUserResponse(user)
+	response := transform.ToUserResponse(user)
 	c.JSON(http.StatusOK, response)
 }
