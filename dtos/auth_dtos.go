@@ -1,7 +1,7 @@
 package dtos
 
 // RegisterRequest defines the payload for user registration
-type RegisterRequestDto struct {
+type RegisterRequestStepOneDto struct {
 	UniversityID string `json:"university_id"`
 	Email        string `json:"email" binding:"required,email"`
 	Password     string `json:"password" binding:"required,min=6"`
@@ -10,3 +10,17 @@ type RegisterRequestDto struct {
 	Role         string `json:"role"`
 }
 
+type ResponseRegisterStepOneDto struct {
+	Message string `json:"message"`
+	RefEmail string `json:"ref_email"`
+	ExpiresInSeconds int64 `json:"expires_in_seconds"`
+}
+
+type RegisterRequestStepTwoDto struct {
+	Email string `json:"email" binding:"required,email"`
+	OTP   string `json:"otp" binding:"required"`
+}
+
+type ResponseRegisterStepTwoDto struct {
+	Message string `json:"message"`
+}

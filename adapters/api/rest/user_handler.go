@@ -47,7 +47,7 @@ func (h *UserHandler) Register(c *gin.Context) {
 }
 
 func (h *UserHandler) GetUser(c *gin.Context) {
-	uuid := c.Param("uid")
+	uuid := c.Param("uuid")
 
 	user, err := h.UseCase.GetUserByUID(uuid) // Assumes you updated UseCase to use UUID
 	if err != nil {
