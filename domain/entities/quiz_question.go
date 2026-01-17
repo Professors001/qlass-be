@@ -1,7 +1,9 @@
 package entities
 
+import "gorm.io/gorm"
+
 type QuizQuestion struct {
-	ID               int    `json:"id" gorm:"primaryKey;autoIncrement"`
+	gorm.Model
 	QuizID           int    `json:"quiz_id" gorm:"not null"`
 	QuestionText     string `json:"question_text" gorm:"not null;type:text"`
 	MediaURL         string `json:"media_url" gorm:"type:varchar(500);comment:Image or Video for the question"`

@@ -29,3 +29,16 @@ type ClassDetailsDto struct {
 	CreatedAt       string `json:"created_at"`
 	UpdatedAt       string `json:"updated_at"`
 }
+
+type StudentDetailsDto struct {
+	Id           string `json:"id"`
+	FirstName    string `json:"first_name"`
+	LastName     string `json:"last_name"`
+	ProfileImg   string `json:"profile_img"`
+	UniversityID string `json:"university_id"`
+	Email        string `json:"email"`
+	EnrolledRole string `json:"enrolled_rolne"`
+	IsArchived   bool   `json:"is_archived"`
+	EnrolledAt   string `json:"enrolled_at"`
+	Status       string `json:"status"`
+}

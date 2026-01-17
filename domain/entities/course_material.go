@@ -1,9 +1,13 @@
 package entities
 
-import "time"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 type CourseMaterial struct {
-	ID                  int        `json:"id" gorm:"primaryKey;autoIncrement"`
+	gorm.Model
 	ClassID             int        `json:"class_id" gorm:"not null"`
 	Type                string     `json:"type" gorm:"type:varchar(50);comment:lecture, assignment, quiz"`
 	Title               string     `json:"title" gorm:"not null;type:varchar(255)"`
@@ -16,7 +20,4 @@ type CourseMaterial struct {
 	QuizPin             *string    `json:"quiz_pin" gorm:"type:varchar(20);comment:Null if no pin is set"`
 	QuizStatus          string     `json:"quiz_status" gorm:"default:idle;type:varchar(50);comment:idle, waiting_lobby, in_progress, finished"`
 	TimeLimitSeconds    *int       `json:"time_limit_seconds" gorm:"comment:For the whole quiz or null"`
-	CreatedAt           time.Time  `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt           *time.Time `json:"updated_at" gorm:"autoUpdateTime"`
-	DeletedAt           *time.Time `json:"deleted_at"`
 }
