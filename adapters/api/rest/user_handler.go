@@ -2,8 +2,9 @@ package rest
 
 import (
 	"net/http"
-	"qlass-be/adapters/api/rest/error"
+	utils "qlass-be/adapters/api/rest/error"
 	"qlass-be/dtos"
+	"qlass-be/infrastructure/middleware"
 	"qlass-be/usecases"
 
 	"github.com/gin-gonic/gin"
@@ -80,4 +81,35 @@ func (h *UserHandler) Me(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, user)
+}
+
+func (h *UserHandler) CreateTeacher(c *gin.Context) {
+	// Check Admin Role
+	val, exists := c.Get("currentUser")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, dtos.GlobalErrorResponse{Error: "UNAUTHORIZED", Message: "User context not found"})
+		return
+	}
+
+	claims, ok := val.(*middleware.JWTCustomClaims)
+	if !ok || claims.Role != "admin" {
+		c.JSON(http.StatusForbidden, dtos.GlobalErrorResponse{Error: "FORBIDDEN", Message: "Only admin can perform this action"})
+		return
+	}
+
+	// Bind DTO
+	var req dtos.CreateTeacherRequestDto
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dtos.GlobalErrorResponse{Error: "BAD_REQUEST", Message: err.Error()})
+		return
+	}
+
+	// Call UseCase
+	res, err := h.UseCase.CreateTeacher(c.Request.Context(), &req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, dtos.GlobalErrorResponse{Error: "CREATION_FAILED", Message: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, res)
 }

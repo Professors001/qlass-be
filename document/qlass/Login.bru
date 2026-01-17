@@ -5,15 +5,15 @@ meta {
 }
 
 post {
-  url: {{base_url}}/users/login
+  url: {{base_url}}/auth/login
   body: json
   auth: inherit
 }
 
 body:json {
   {
-    "university_id": "5410942856",
-    "password": "123456"
+    "university_id": "ADMIN001",
+    "password": "admin1234"
   }
 }
 

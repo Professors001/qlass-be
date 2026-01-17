@@ -84,7 +84,7 @@ func (c *classUseCase) GetClassDetailsByInviteCode(ctx context.Context, inviteCo
 	return &classDetailsDto, nil
 }
 
-func (c *classUseCase) generateUniqueInviteCode(ctx context.Context) (string, error) {
+func (c *classUseCase) generateUniqueInviteCode(_ context.Context) (string, error) {
 	const maxRetries = 10
 	const codeLength = 6
 

@@ -16,6 +16,9 @@ import (
 
 func SetUpRouters(r *gin.Engine, db *gorm.DB, cache *cache.CacheHelper, jwtService middleware.JwtService) {
 
+	// Seed Admin User if not exists
+	databases.SeedAdminUser(db)
+
 	userRepo := databases.NewPostgresUserRepository(db)
 	userCacheRepo := redis.NewUserRedisRepository(cache)
 	userUseCase := usecases.NewUserUseCase(userRepo, userCacheRepo, jwtService)
@@ -25,7 +28,6 @@ func SetUpRouters(r *gin.Engine, db *gorm.DB, cache *cache.CacheHelper, jwtServi
 	classUseCase := usecases.NewClassUseCase(classRepo)
 	classHandler := rest.NewClassHandler(classUseCase)
 
-
 	handler := api.ProvideHandler(userHandler, classHandler)
 
 	r.GET("/", func(c *gin.Context) {
@@ -33,11 +35,12 @@ func SetUpRouters(r *gin.Engine, db *gorm.DB, cache *cache.CacheHelper, jwtServi
 	})
 
 	// Users
-	userRouter := r.Group("/users")
+	userRouter := r.Group("/auth")
 	userRouter.POST("/register-step-one", handler.UserHandler.RegisterFirstStep)
 	userRouter.POST("/register-step-two", handler.UserHandler.RegisterSecondStep)
 	userRouter.POST("/login", handler.UserHandler.Login)
 	userRouter.GET("/me", middleware.AuthorizeJWT(jwtService), handler.UserHandler.Me)
+	userRouter.POST("/create-teacher", middleware.AuthorizeJWT(jwtService), handler.UserHandler.CreateTeacher)
 
 	// Classes
 	classRouter := r.Group("/classes")

@@ -1,12 +1,12 @@
 package dtos
 
 type RegisterRequestStepOneDto struct {
-    UniversityID string `json:"university_id" binding:"required"`
-    Email        string `json:"email" binding:"required,email"`
-    Password     string `json:"password" binding:"required,min=6"`
-    FirstName    string `json:"first_name" binding:"required"`
-    LastName     string `json:"last_name" binding:"required"`
-    Role         string `json:"role" binding:"required,oneof=student teacher"`
+	UniversityID string `json:"university_id" binding:"required"`
+	Email        string `json:"email" binding:"required,email"`
+	Password     string `json:"password" binding:"required,min=6"`
+	FirstName    string `json:"first_name" binding:"required"`
+	LastName     string `json:"last_name" binding:"required"`
+	Role         string `json:"role" binding:"required,oneof=student teacher"`
 }
 
 type ResponseRegisterStepOneDto struct {
@@ -44,11 +44,24 @@ type UserDisplayData struct {
 
 type LoginRequestDto struct {
 	UniversityID string `json:"university_id" validate:"required"`
-	Password string `json:"password" validate:"required"`
+	Password     string `json:"password" validate:"required"`
 }
 
 type LoginResponseDto struct {
+	Message string          `json:"message"`
+	Token   string          `json:"token"`
+	User    UserDisplayData `json:"user"`
+}
+
+type CreateTeacherRequestDto struct {
+	UniversityID string `json:"university_id" binding:"required"`
+	Email        string `json:"email" binding:"required,email"`
+	Password     string `json:"password" binding:"required,min=6"`
+	FirstName    string `json:"first_name" binding:"required"`
+	LastName     string `json:"last_name" binding:"required"`
+}
+
+type CreateTeacherResponseDto struct {
 	Message string `json:"message"`
-	Token string `json:"token"`
-	User UserDisplayData `json:"user"`
+	UserID  uint   `json:"user_id"`
 }

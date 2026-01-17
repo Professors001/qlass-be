@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"qlass-be/domain/entities"
 	"qlass-be/domain/repositories"
 	"qlass-be/dtos"
 	"qlass-be/infrastructure/middleware"
@@ -17,6 +18,7 @@ type UserUseCase interface {
 	RegisterFirstStep(ctx context.Context, req *dtos.RegisterRequestStepOneDto) (*dtos.ResponseRegisterStepOneDto, error)
 	RegisterSecondStep(ctx context.Context, req *dtos.RegisterRequestStepTwoDto) (*dtos.ResponseRegisterStepTwoDto, error)
 	Login(ctx context.Context, req *dtos.LoginRequestDto) (*dtos.LoginResponseDto, error)
+	CreateTeacher(ctx context.Context, req *dtos.CreateTeacherRequestDto) (*dtos.CreateTeacherResponseDto, error)
 }
 
 type userUseCase struct {
@@ -131,3 +133,40 @@ func (u *userUseCase) Login(ctx context.Context, req *dtos.LoginRequestDto) (*dt
 	}, nil
 }
 
+func (u *userUseCase) CreateTeacher(ctx context.Context, req *dtos.CreateTeacherRequestDto) (*dtos.CreateTeacherResponseDto, error) {
+	// Check if user already exists
+	if _, err := u.userRepo.GetByEmail(req.Email); err == nil {
+		return nil, errors.New("email already exists")
+	}
+	if _, err := u.userRepo.GetByUniID(req.UniversityID); err == nil {
+		return nil, errors.New("university ID already exists")
+	}
+
+	// Hash password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+
+	teacher := &entities.User{
+		UniversityID:  req.UniversityID,
+		Email:         req.Email,
+		PasswordHash:  string(hashedPassword),
+		FirstName:     req.FirstName,
+		LastName:      req.LastName,
+		Role:          "teacher",
+		IsVerified:    false,
+		IsActive:      true,
+		ProfileImgURL: "https://ui-avatars.com/api/?name=" + req.FirstName + "+" + req.LastName,
+	}
+
+	if err := u.userRepo.Create(teacher); err != nil {
+		log.Println("Error creating teacher in DB:", err)
+		return nil, err
+	}
+
+	return &dtos.CreateTeacherResponseDto{
+		Message: "Teacher created successfully",
+		UserID:  teacher.ID,
+	}, nil
+}
