@@ -45,5 +45,6 @@ func SetUpRouters(r *gin.Engine, db *gorm.DB, cache *cache.CacheHelper, jwtServi
 	// Classes
 	classRouter := r.Group("/classes")
 	classRouter.POST("/", middleware.AuthorizeJWT(jwtService), handler.ClassHandler.CreateClass)
+	classRouter.GET("/", middleware.AuthorizeJWT(jwtService), handler.ClassHandler.GetAllMyClasses)
 	classRouter.GET("/invite/:code", handler.ClassHandler.GetClassDetailsByInviteCode)
 }

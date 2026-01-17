@@ -1,27 +1,17 @@
 meta {
-  name: CreateClass
+  name: All My Class
   type: http
-  seq: 5
+  seq: 7
 }
 
-post {
+get {
   url: {{base_url}}/classes
-  body: json
+  body: none
   auth: bearer
 }
 
 auth:bearer {
   token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozLCJyb2xlIjoidGVhY2hlciIsImV4cCI6MTc2ODkxNjM1Nn0.dvHap-TUglVWxE8JZi7gwPKXBBcjJWTxGxV6r0D4XYc
-}
-
-body:json {
-  {
-    "name": "Introduction to Computer Science",
-    "description": "Basic concepts of programming and algorithms 2.",
-    "section": "1",
-    "term": "2/2025",
-    "room": "LH-201"
-  }
 }
 
 settings {

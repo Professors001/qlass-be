@@ -6,8 +6,22 @@ meta {
 
 post {
   url: {{base_url}}/auth/create-teacher
-  body: none
-  auth: inherit
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoiYWRtaW4iLCJleHAiOjE3Njg5MTUzOTV9.oIrlVXRVzcy9qjkGyw6U5KFyDc9x7Uz4URBaVofVDhQ
+}
+
+body:json {
+  {
+    "university_id": "fsci1001",
+    "email": "teacher@gmail.com",
+    "password": "123456",
+    "first_name": "Teahcer",
+    "last_name": "Holland"
+  }  
 }
 
 settings {

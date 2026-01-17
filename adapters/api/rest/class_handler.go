@@ -97,3 +97,31 @@ func (h *ClassHandler) GetClassDetailsByInviteCode(c *gin.Context) {
 		"data":    res,
 	})
 }
+
+func (h *ClassHandler) GetAllMyClasses(c *gin.Context) {
+	val, exists := c.Get("currentUser")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, dtos.GlobalErrorResponse{
+			Error:   "UNAUTHORIZED",
+			Message: "User context not found",
+		})
+		return
+	}
+
+	claims, ok := val.(*middleware.JWTCustomClaims)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, dtos.GlobalErrorResponse{
+			Error:   "INTERNAL_ERROR",
+			Message: "Failed to cast user context",
+		})
+		return
+	}
+
+	res, err := h.UseCase.GetAllMyClasses(c.Request.Context(), claims.UserId)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dtos.GlobalErrorResponse{Error: "INTERNAL_ERROR", Message: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": res})
+}

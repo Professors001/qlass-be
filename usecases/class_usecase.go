@@ -14,6 +14,7 @@ type ClassUseCase interface {
 	CreateClass(ctx context.Context, req *dtos.CreateClassRequestDto, ownerID uint) (*dtos.CreateClassResponseDto, error)
 	GetClassDetailsByID(ctx context.Context, classID uint) (*dtos.ClassDetailsDto, error)
 	GetClassDetailsByInviteCode(ctx context.Context, inviteCode string) (*dtos.ClassDetailsDto, error)
+	GetAllMyClasses(ctx context.Context, userID uint) ([]dtos.ClassDetailsDto, error)
 }
 
 type classUseCase struct {
@@ -82,6 +83,24 @@ func (c *classUseCase) GetClassDetailsByInviteCode(ctx context.Context, inviteCo
 	classDetailsDto := transform.EntityToClassDetailsDto(*class)
 
 	return &classDetailsDto, nil
+}
+
+func (c *classUseCase) GetAllMyClasses(ctx context.Context, userID uint) ([]dtos.ClassDetailsDto, error) {
+	classes, err := c.classRepo.GetByUserID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	var result []dtos.ClassDetailsDto
+	for _, class := range classes {
+		result = append(result, transform.EntityToClassDetailsDto(class))
+	}
+
+	if result == nil {
+		result = []dtos.ClassDetailsDto{}
+	}
+
+	return result, nil
 }
 
 func (c *classUseCase) generateUniqueInviteCode(_ context.Context) (string, error) {
