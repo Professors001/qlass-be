@@ -2,7 +2,7 @@ package rest
 
 import (
 	"net/http"
-	"qlass-be/adapters/api/rest/utils"
+	"qlass-be/adapters/api/rest/error"
 	"qlass-be/dtos"
 	"qlass-be/usecases"
 

@@ -11,7 +11,7 @@ type Class struct {
 	Room        string     `json:"room" gorm:"type:varchar(100);comment:e.g. Lab 402"`
 	InviteCode  string     `json:"invite_code" gorm:"unique;type:varchar(6);comment:Random 6-char code for students to join"`
 	IsArchived  bool       `json:"is_archived" gorm:"default:false;comment:Hide old classes without deleting"`
-	OwnerID     int        `json:"owner_id" gorm:"not null;comment:The Teacher"`
+	OwnerID     uint       `json:"owner_id" gorm:"not null;comment:The Teacher"`
 	CreatedAt   time.Time  `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt   *time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 	DeletedAt   *time.Time `json:"deleted_at"`

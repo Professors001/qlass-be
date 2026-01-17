@@ -6,10 +6,12 @@ import (
 
 type Handler struct {
 	UserHandler *rest.UserHandler
+	ClassHandler *rest.ClassHandler
 }
 
-func ProvideHandler(userHandler *rest.UserHandler) *Handler {
+func ProvideHandler(userHandler *rest.UserHandler, classHandler *rest.ClassHandler) *Handler {
 	return &Handler{
 		UserHandler: userHandler,
+		ClassHandler: classHandler,
 	}
 }

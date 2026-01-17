@@ -1,0 +1,30 @@
+meta {
+  name: CreateClass
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{base_url}}/classes
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJyb2xlIjoic3R1ZGVudCIsImV4cCI6MTc2ODkwMDIxMH0.iNNvjVPp8Z5qPfamkxVjTYHIrw1GMq8BDEFEYVkk05Q
+}
+
+body:json {
+  {
+    "name": "Introduction to Computer Science II",
+    "description": "Basic concepts of programming and algorithms 2.",
+    "section": "1",
+    "term": "2/2025",
+    "room": "LH-201"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -21,7 +21,12 @@ func SetUpRouters(r *gin.Engine, db *gorm.DB, cache *cache.CacheHelper, jwtServi
 	userUseCase := usecases.NewUserUseCase(userRepo, userCacheRepo, jwtService)
 	userHandler := rest.NewUserHandler(userUseCase)
 
-	handler := api.ProvideHandler(userHandler)
+	classRepo := databases.NewPostgresClassRepository(db)
+	classUseCase := usecases.NewClassUseCase(classRepo)
+	classHandler := rest.NewClassHandler(classUseCase)
+
+
+	handler := api.ProvideHandler(userHandler, classHandler)
 
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "Qlass BE is still running!"})
@@ -33,4 +38,9 @@ func SetUpRouters(r *gin.Engine, db *gorm.DB, cache *cache.CacheHelper, jwtServi
 	userRouter.POST("/register-step-two", handler.UserHandler.RegisterSecondStep)
 	userRouter.POST("/login", handler.UserHandler.Login)
 	userRouter.GET("/me", middleware.AuthorizeJWT(jwtService), handler.UserHandler.Me)
+
+	// Classes
+	classRouter := r.Group("/classes")
+	classRouter.POST("/", middleware.AuthorizeJWT(jwtService), handler.ClassHandler.CreateClass)
+	classRouter.GET("/invite/:code", handler.ClassHandler.GetClassDetailsByInviteCode)
 }

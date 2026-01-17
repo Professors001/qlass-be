@@ -9,8 +9,8 @@ type CreateClassRequestDto struct {
 }
 
 type CreateClassResponseDto struct {
-	Message string `json:"message"`
-	ClassID string `json:"class_id"`
+	Message string          `json:"message"`
+	Data    ClassDetailsDto `json:"data"`
 }
 
 type ClassDetailsDto struct {

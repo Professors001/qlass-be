@@ -119,7 +119,7 @@ func (u *userUseCase) Login(ctx context.Context, req *dtos.LoginRequestDto) (*dt
 		Role:         user.Role,
 	}
 
-	token, err := u.jwtService.GenerateToken(user.UniversityID, user.Role)
+	token, err := u.jwtService.GenerateToken(user.ID, user.Role)
 	if err != nil {
 		return nil, errors.New("failed to generate token")
 	}

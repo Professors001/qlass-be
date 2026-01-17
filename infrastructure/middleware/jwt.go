@@ -13,7 +13,7 @@ import (
 
 // IJwtService defines the interface for mocking in tests
 type JwtService interface {
-	GenerateToken(uniID string, role string) (string, error)
+	GenerateToken(id uint, role string) (string, error)
 	ValidateToken(tokenString string) (*JWTCustomClaims, error)
 }
 
@@ -22,7 +22,7 @@ type jwtService struct {
 }
 
 type JWTCustomClaims struct {
-	UserId string `json:"user_id"`
+	UserId uint   `json:"user_id"`
 	Role   string `json:"role"`
 	jwt.RegisteredClaims
 }
@@ -34,9 +34,9 @@ func NewJWTService(cfg *config.Config) JwtService {
 	}
 }
 
-func (s *jwtService) GenerateToken(uniID string, role string) (string, error) {
+func (s *jwtService) GenerateToken(id uint, role string) (string, error) {
 	claims := &JWTCustomClaims{
-		uniID,
+		id,
 		role,
 		jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 72)),
