@@ -40,6 +40,14 @@ func (h *ClassHandler) CreateClass(c *gin.Context) {
 		return
 	}
 
+	if claims.Role != "teacher" {
+		c.JSON(http.StatusForbidden, dtos.GlobalErrorResponse{
+			Error:   "FORBIDDEN",
+			Message: "Only teachers can create classes",
+		})
+		return
+	}
+
 	// 3. Parsing: รับข้อมูล JSON Request Body
 	var req dtos.CreateClassRequestDto
 	if err := c.ShouldBindJSON(&req); err != nil {
