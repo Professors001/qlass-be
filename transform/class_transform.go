@@ -17,8 +17,9 @@ func EntityToClassDetailsDto(class entities.Class) dtos.ClassDetailsDto {
 		InviteCode:      class.InviteCode,
 		IsArchived:      class.IsArchived,
 		OwnerID:         strconv.FormatUint(uint64(class.OwnerID), 10),
-		OwnerName:       "STILL NOT IMPLEMENT",
-		OwnerProfileImg: "STILL NOT IMPLEMENT",
+		OwnerFirstName:  class.Owner.FirstName,
+		OwnerLastName:   class.Owner.LastName,
+		OwnerProfileImg: class.Owner.ProfileImgURL,
 		CreatedAt:       class.CreatedAt.String(),
 		UpdatedAt:       class.UpdatedAt.String(),
 	}

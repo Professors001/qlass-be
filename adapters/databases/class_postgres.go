@@ -28,7 +28,7 @@ func (r *postgresClassRepository) GetByID(id uint) (*entities.Class, error) {
 	var class entities.Class
 
 	// SELECT * FROM classes WHERE id = ?
-	if err := r.db.Where("id = ?", id).First(&class).Error; err != nil {
+	if err := r.db.Preload("Owner").Where("id = ?", id).First(&class).Error; err != nil {
 		return nil, err
 	}
 	return &class, nil
@@ -38,7 +38,7 @@ func (r *postgresClassRepository) GetByInviteCode(code string) (*entities.Class,
 	var class entities.Class
 
 	// SELECT * FROM classes WHERE invite_code = ?
-	if err := r.db.Where("invite_code = ?", code).First(&class).Error; err != nil {
+	if err := r.db.Preload("Owner").Where("invite_code = ?", code).First(&class).Error; err != nil {
 		return nil, err
 	}
 	return &class, nil

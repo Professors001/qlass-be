@@ -23,7 +23,8 @@ type ClassDetailsDto struct {
 	InviteCode      string `json:"invite_code"`
 	IsArchived      bool   `json:"is_archived"`
 	OwnerID         string `json:"owner_id"`
-	OwnerName       string `json:"owner_name"`
+	OwnerFirstName  string `json:"owner_first_name"`
+	OwnerLastName   string `json:"owner_last_name"`
 	OwnerProfileImg string `json:"owner_profile_img"`
 	CreatedAt       string `json:"created_at"`
 	UpdatedAt       string `json:"updated_at"`
