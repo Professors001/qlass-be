@@ -55,3 +55,11 @@ func (r *postgresEnrollRepository) RemoveStudent(classID uint, studentID uint) e
 	}
 	return nil
 }
+
+func (r *postgresEnrollRepository) IsEnrolled(classID uint, userID uint) (bool, error) {
+	var count int64
+	if err := r.db.Model(&entities.ClassEnrollment{}).Where("class_id = ? AND user_id = ?", classID, userID).Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}

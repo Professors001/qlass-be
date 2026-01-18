@@ -121,6 +121,14 @@ func (c *classUseCase) EnrollStudent(ctx context.Context, inviteCode string, stu
 		return err
 	}
 
+	isEnrolled, err := c.enrollRepo.IsEnrolled(class.ID, studentID)
+	if err != nil {
+		return err
+	}
+	if isEnrolled {
+		return errors.New("user is already enrolled in this class")
+	}
+
 	return c.enrollRepo.EnrollStudent(class.ID, studentID)
 }
 
