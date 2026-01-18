@@ -24,3 +24,16 @@ func EntityToClassDetailsDto(class entities.Class) dtos.ClassDetailsDto {
 		UpdatedAt:       class.UpdatedAt.String(),
 	}
 }
+
+func EntityToStudentDetailsDto(enrollment entities.ClassEnrollment) dtos.StudentDetailsDto {
+	return dtos.StudentDetailsDto{
+		UniversityID: enrollment.User.UniversityID,
+		FirstName:    enrollment.User.FirstName,
+		LastName:     enrollment.User.LastName,
+		ProfileImg:   enrollment.User.ProfileImgURL,
+		Email:        enrollment.User.Email,
+		EnrolledRole: enrollment.Role,
+		EnrolledAt:   enrollment.CreatedAt.String(),
+		Status:       enrollment.Status,
+	}
+}

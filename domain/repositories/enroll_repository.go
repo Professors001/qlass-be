@@ -4,6 +4,7 @@ import "qlass-be/domain/entities"
 
 type EnrollRepository interface {
 	EnrollStudent(classID uint, studentID uint) error
-	GetStudentsByClassID(classID uint) (*entities.User, error)
+	EnrollWithRole(classID uint, userID uint, role string) error
+	GetEnrolledStudentsByClassID(classID uint) ([]entities.ClassEnrollment, error)
 	RemoveStudent(classID uint, studentID uint) error
 }

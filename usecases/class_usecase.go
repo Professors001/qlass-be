@@ -8,6 +8,7 @@ import (
 	"qlass-be/dtos"
 	"qlass-be/infrastructure/utils"
 	"qlass-be/transform"
+	"strconv"
 )
 
 type ClassUseCase interface {
@@ -15,15 +16,19 @@ type ClassUseCase interface {
 	GetClassDetailsByID(ctx context.Context, classID uint) (*dtos.ClassDetailsDto, error)
 	GetClassDetailsByInviteCode(ctx context.Context, inviteCode string) (*dtos.ClassDetailsDto, error)
 	GetAllMyClasses(ctx context.Context, userID uint) ([]dtos.ClassDetailsDto, error)
+	EnrollStudent(ctx context.Context, inviteCode string, studentID uint) error
+	GetEnrolledStudentsByClassID(ctx context.Context, classID uint) (*dtos.SummaryEnrolledStudentsDto, error)
 }
 
 type classUseCase struct {
-	classRepo repositories.ClassRepository
+	classRepo  repositories.ClassRepository
+	enrollRepo repositories.EnrollRepository
 }
 
-func NewClassUseCase(repo repositories.ClassRepository) ClassUseCase {
+func NewClassUseCase(classRepo repositories.ClassRepository, enrollRepo repositories.EnrollRepository) ClassUseCase {
 	return &classUseCase{
-		classRepo: repo,
+		classRepo:  classRepo,
+		enrollRepo: enrollRepo,
 	}
 }
 
@@ -50,13 +55,18 @@ func (c *classUseCase) CreateClass(ctx context.Context, req *dtos.CreateClassReq
 		return nil, err
 	}
 
-	// 4. Fetch the latest details
+	// 4. Enroll the owner as a teacher
+	if err := c.enrollRepo.EnrollWithRole(class.ID, ownerID, "teacher"); err != nil {
+		return nil, err
+	}
+
+	// 5. Fetch the latest details
 	classDetails, err := c.GetClassDetailsByID(ctx, uint(class.ID))
 	if err != nil {
 		return nil, err
 	}
 
-	// 5. Build Response following Return Message & Data requirement
+	// 6. Build Response following Return Message & Data requirement
 	return &dtos.CreateClassResponseDto{
 		Message: "Class created successfully",
 		Data:    *classDetails,
@@ -86,14 +96,16 @@ func (c *classUseCase) GetClassDetailsByInviteCode(ctx context.Context, inviteCo
 }
 
 func (c *classUseCase) GetAllMyClasses(ctx context.Context, userID uint) ([]dtos.ClassDetailsDto, error) {
-	classes, err := c.classRepo.GetByUserID(userID)
+	enrollments, err := c.classRepo.GetByUserID(userID)
 	if err != nil {
 		return nil, err
 	}
 
 	var result []dtos.ClassDetailsDto
-	for _, class := range classes {
-		result = append(result, transform.EntityToClassDetailsDto(class))
+	for _, enrollment := range enrollments {
+		dto := transform.EntityToClassDetailsDto(enrollment.Class)
+		dto.Role = enrollment.Role
+		result = append(result, dto)
 	}
 
 	if result == nil {
@@ -101,6 +113,41 @@ func (c *classUseCase) GetAllMyClasses(ctx context.Context, userID uint) ([]dtos
 	}
 
 	return result, nil
+}
+
+func (c *classUseCase) EnrollStudent(ctx context.Context, inviteCode string, studentID uint) error {
+	class, err := c.classRepo.GetByInviteCode(inviteCode)
+	if err != nil {
+		return err
+	}
+
+	return c.enrollRepo.EnrollStudent(class.ID, studentID)
+}
+
+func (c *classUseCase) GetEnrolledStudentsByClassID(ctx context.Context, classID uint) (*dtos.SummaryEnrolledStudentsDto, error) {
+	enrollments, err := c.enrollRepo.GetEnrolledStudentsByClassID(classID)
+	if err != nil {
+		return nil, err
+	}
+
+	var teachers []dtos.StudentDetailsDto
+	var students []dtos.StudentDetailsDto
+
+	for _, enrollment := range enrollments {
+		dto := transform.EntityToStudentDetailsDto(enrollment)
+		if enrollment.Role == "teacher" || enrollment.Role == "ta" {
+			teachers = append(teachers, dto)
+		} else {
+			students = append(students, dto)
+		}
+	}
+
+	return &dtos.SummaryEnrolledStudentsDto{
+		ClassID:      strconv.FormatUint(uint64(classID), 10),
+		StudentCount: len(students),
+		Teachers:     teachers,
+		Students:     students,
+	}, nil
 }
 
 func (c *classUseCase) generateUniqueInviteCode(_ context.Context) (string, error) {

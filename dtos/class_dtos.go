@@ -28,17 +28,33 @@ type ClassDetailsDto struct {
 	OwnerProfileImg string `json:"owner_profile_img"`
 	CreatedAt       string `json:"created_at"`
 	UpdatedAt       string `json:"updated_at"`
+	Role            string `json:"role"`
+}
+
+type EnrollRequestDto struct {
+	InviteCode string `json:"invite_code" binding:"required"`
 }
 
 type StudentDetailsDto struct {
-	Id           string `json:"id"`
+	UniversityID string `json:"university_id"`
 	FirstName    string `json:"first_name"`
 	LastName     string `json:"last_name"`
 	ProfileImg   string `json:"profile_img"`
-	UniversityID string `json:"university_id"`
 	Email        string `json:"email"`
-	EnrolledRole string `json:"enrolled_rolne"`
+	EnrolledRole string `json:"enrolled_role"`
 	IsArchived   bool   `json:"is_archived"`
 	EnrolledAt   string `json:"enrolled_at"`
 	Status       string `json:"status"`
+}
+
+type SummaryEnrolledStudentsDto struct {
+	ClassID      string              `json:"class_id"`
+	StudentCount int                 `json:"student_count"`
+	Teachers     []StudentDetailsDto `json:"teachers"`
+	Students     []StudentDetailsDto `json:"students"`
+}
+
+type GetEnrolledStudentsResponseDto struct {
+	Message string            `json:"message"`
+	Data    StudentDetailsDto `json:"data"`
 }

@@ -8,43 +8,63 @@ import (
 	"gorm.io/gorm"
 )
 
-func SeedAdminUser(db *gorm.DB) {
-	var count int64
-	// Check if an admin already exists
-	if err := db.Model(&entities.User{}).Where("role = ?", "admin").Count(&count).Error; err != nil {
-		log.Printf("Error checking for admin user: %v", err)
-		return
-	}
-
-	if count > 0 {
-		return
-	}
-
-	log.Println("Seeding admin user...")
-
-	// Create Admin User
-	password := "admin1234"
+func SeedUsers(db *gorm.DB) {
+	password := "123456"
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Printf("Failed to hash password: %v", err)
 		return
 	}
 
-	admin := entities.User{
-		UniversityID:  "ADMIN001",
-		Email:         "admin@qlass.com",
-		PasswordHash:  string(hashedPassword),
-		FirstName:     "System",
-		LastName:      "Admin",
-		Role:          "admin",
-		IsVerified:    true,
-		IsActive:      true,
-		ProfileImgURL: "https://ui-avatars.com/api/?name=System+Admin",
+	users := []entities.User{
+		{
+			UniversityID:  "admin",
+			Email:         "admin@qlass.com",
+			PasswordHash:  string(hashedPassword),
+			FirstName:     "System",
+			LastName:      "Admin",
+			Role:          "admin",
+			IsVerified:    true,
+			IsActive:      true,
+			ProfileImgURL: "https://ui-avatars.com/api/?name=System+Admin",
+		},
+		{
+			UniversityID:  "teacher",
+			Email:         "teacher@qlass.com",
+			PasswordHash:  string(hashedPassword),
+			FirstName:     "John",
+			LastName:      "Teacher",
+			Role:          "teacher",
+			IsVerified:    true,
+			IsActive:      true,
+			ProfileImgURL: "https://ui-avatars.com/api/?name=John+Teacher",
+		},
+		{
+			UniversityID:  "student",
+			Email:         "student@qlass.com",
+			PasswordHash:  string(hashedPassword),
+			FirstName:     "Jane",
+			LastName:      "Student",
+			Role:          "student",
+			IsVerified:    true,
+			IsActive:      true,
+			ProfileImgURL: "https://ui-avatars.com/api/?name=Jane+Student",
+		},
 	}
 
-	if err := db.Create(&admin).Error; err != nil {
-		log.Printf("Failed to create admin user: %v", err)
-	} else {
-		log.Println("Admin user seeded successfully (Email: admin@qlass.com, Password: admin1234)")
+	for _, user := range users {
+		var count int64
+		if err := db.Model(&entities.User{}).Where("university_id = ?", user.UniversityID).Count(&count).Error; err != nil {
+			log.Printf("Error checking user %s: %v", user.UniversityID, err)
+			continue
+		}
+
+		if count == 0 {
+			if err := db.Create(&user).Error; err != nil {
+				log.Printf("Failed to create user %s: %v", user.UniversityID, err)
+			} else {
+				log.Printf("User %s seeded successfully", user.UniversityID)
+			}
+		}
 	}
 }

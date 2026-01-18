@@ -44,15 +44,11 @@ func (r *postgresClassRepository) GetByInviteCode(code string) (*entities.Class,
 	return &class, nil
 }
 
-func (r *postgresClassRepository) GetByUserID(userID uint) ([]entities.Class, error) {
-	var classes []entities.Class
+func (r *postgresClassRepository) GetByUserID(userID uint) ([]entities.ClassEnrollment, error) {
+	var enrollments []entities.ClassEnrollment
 
-	// Subquery: SELECT class_id FROM class_enrollments WHERE user_id = ?
-	subQuery := r.db.Model(&entities.ClassEnrollment{}).Select("class_id").Where("user_id = ?", userID)
-
-	// Main Query: OwnerID = ? OR ID IN (subQuery)
-	if err := r.db.Preload("Owner").Where("owner_id = ?", userID).Or("id IN (?)", subQuery).Order("created_at desc").Find(&classes).Error; err != nil {
+	if err := r.db.Preload("Class.Owner").Where("user_id = ?", userID).Order("created_at desc").Find(&enrollments).Error; err != nil {
 		return nil, err
 	}
-	return classes, nil
+	return enrollments, nil
 }

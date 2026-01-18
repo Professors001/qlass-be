@@ -29,11 +29,13 @@ func main() {
 	cacheHelper := cache.NewCacheHelper(cacheService)
 
 	// Migration
-	db.AutoMigrate(
+	if err := db.AutoMigrate(
 		&entities.User{}, &entities.Class{}, &entities.ClassEnrollment{},
 		&entities.CourseMaterial{}, &entities.Attachment{},
 		&entities.Quiz{}, &entities.QuizQuestion{}, &entities.QuizOption{},
-		&entities.QuizGameLog{}, &entities.Submission{})
+		&entities.QuizGameLog{}, &entities.Submission{}); err != nil {
+		log.Fatalf("❌ Migration failed: %v", err)
+	}
 
 	// Init Gin Framework
 	r := gin.Default()

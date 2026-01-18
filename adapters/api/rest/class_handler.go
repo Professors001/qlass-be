@@ -5,6 +5,7 @@ import (
 	"qlass-be/dtos"
 	"qlass-be/infrastructure/middleware" // ตรวจสอบว่าชี้ไปยัง package ที่มี JWTCustomClaims
 	"qlass-be/usecases"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -118,6 +119,50 @@ func (h *ClassHandler) GetAllMyClasses(c *gin.Context) {
 	}
 
 	res, err := h.UseCase.GetAllMyClasses(c.Request.Context(), claims.UserId)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dtos.GlobalErrorResponse{Error: "INTERNAL_ERROR", Message: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": res})
+}
+
+func (h *ClassHandler) EnrollStudent(c *gin.Context) {
+	val, exists := c.Get("currentUser")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, dtos.GlobalErrorResponse{Error: "UNAUTHORIZED", Message: "User context not found"})
+		return
+	}
+
+	claims, ok := val.(*middleware.JWTCustomClaims)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, dtos.GlobalErrorResponse{Error: "INTERNAL_ERROR", Message: "Failed to cast user context"})
+		return
+	}
+
+	var req dtos.EnrollRequestDto
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dtos.GlobalErrorResponse{Error: "BAD_REQUEST", Message: err.Error()})
+		return
+	}
+
+	if err := h.UseCase.EnrollStudent(c.Request.Context(), req.InviteCode, claims.UserId); err != nil {
+		c.JSON(http.StatusBadRequest, dtos.GlobalErrorResponse{Error: "ENROLL_FAILED", Message: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Enrolled successfully"})
+}
+
+func (h *ClassHandler) GetEnrolledStudents(c *gin.Context) {
+	classIDStr := c.Param("id")
+	classID, err := strconv.ParseUint(classIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, dtos.GlobalErrorResponse{Error: "BAD_REQUEST", Message: "Invalid class ID"})
+		return
+	}
+
+	res, err := h.UseCase.GetEnrolledStudentsByClassID(c.Request.Context(), uint(classID))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, dtos.GlobalErrorResponse{Error: "INTERNAL_ERROR", Message: err.Error()})
 		return
