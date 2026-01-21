@@ -6,15 +6,17 @@ import (
 	"qlass-be/adapters/api/rest"
 	"qlass-be/adapters/databases"
 	"qlass-be/adapters/redis"
+	"qlass-be/config"
 	"qlass-be/infrastructure/cache"
 	"qlass-be/infrastructure/middleware"
 	"qlass-be/usecases"
 
 	"github.com/gin-gonic/gin"
+	"github.com/minio/minio-go/v7"
 	"gorm.io/gorm"
 )
 
-func SetUpRouters(r *gin.Engine, db *gorm.DB, cache *cache.CacheHelper, jwtService middleware.JwtService) {
+func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cache *cache.CacheHelper, jwtService middleware.JwtService, minioClient *minio.Client) {
 
 	// Seed Users (Admin, Teacher, Student) if not exists
 	databases.SeedUsers(db)
@@ -29,11 +31,16 @@ func SetUpRouters(r *gin.Engine, db *gorm.DB, cache *cache.CacheHelper, jwtServi
 	classUseCase := usecases.NewClassUseCase(classRepo, enrollRepo)
 	classHandler := rest.NewClassHandler(classUseCase)
 
-	handler := api.ProvideHandler(userHandler, classHandler)
+	fileUseCase := usecases.NewFileUseCase(minioClient)
+	fileController := rest.NewFileController(fileUseCase, cfg)
 
+	handler := api.ProvideHandler(userHandler, classHandler, fileController)
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "Qlass BE is still running!"})
 	})
+
+	r.POST("/test/upload", fileController.Upload)
+	r.GET("/test/file", fileController.GetUrl)
 
 	// Users
 	userRouter := r.Group("/auth")

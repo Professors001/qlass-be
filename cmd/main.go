@@ -19,6 +19,7 @@ func main() {
 	db := config.NewPostgresDB(cfg)
 	redisClient := config.NewRedisClient(cfg)
 	jwtService := middleware.NewJWTService(cfg)
+	minioClient := config.NewMinioClient(cfg)
 
 	// Verify Redis connection
 	if err := redisClient.Ping(context.Background()).Err(); err != nil {
@@ -27,6 +28,16 @@ func main() {
 
 	cacheService := cache.NewCacheService(redisClient)
 	cacheHelper := cache.NewCacheHelper(cacheService)
+
+	// Verify MinIO Bucket
+	exists, err := minioClient.BucketExists(context.Background(), cfg.MinioBucketName)
+	if err != nil {
+		log.Printf("⚠️  Error checking MinIO bucket: %v", err)
+	} else if !exists {
+		log.Printf("⚠️  MinIO bucket '%s' does not exist", cfg.MinioBucketName)
+	} else {
+		log.Printf("✅ MinIO bucket '%s' is ready", cfg.MinioBucketName)
+	}
 
 	// Migration
 	if err := db.AutoMigrate(
@@ -41,7 +52,7 @@ func main() {
 	r := gin.Default()
 
 	// Init Routers
-	router.SetUpRouters(r, db, cacheHelper, jwtService)
+	router.SetUpRouters(r, cfg, db, cacheHelper, jwtService, minioClient)
 
 	serverAddr := fmt.Sprintf("%s", cfg.AppPort)
 	log.Printf("🚀 Server running on port %s", serverAddr)

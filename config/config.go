@@ -28,6 +28,13 @@ type Config struct {
 
 	// Security
 	JWTSecret string `mapstructure:"JWT_SECRET"`
+
+	// MinIO Settings
+	MinioEndpoint   string `mapstructure:"MINIO_ENDPOINT"`
+	MinioAccessKey  string `mapstructure:"MINIO_ROOT_USER"`
+	MinioSecretKey  string `mapstructure:"MINIO_ROOT_PASSWORD"`
+	MinioBucketName string `mapstructure:"MINIO_BUCKET_NAME"`
+	MinioUseSSL     bool   `mapstructure:"MINIO_USE_SSL"`
 }
 
 // LoadConfig reads configuration from .env file or environment variables
@@ -56,6 +63,10 @@ func LoadConfig() *Config {
 	// Basic validation
 	if config.DBHost == "" || config.DBPort == "" {
 		log.Fatal("❌ Database configuration is missing. Check your .env file.")
+	}
+
+	if config.MinioEndpoint == "" {
+		log.Fatal("❌ MinIO configuration is missing. Check MINIO_ENDPOINT in your .env file.")
 	}
 
 	// Fix: Redis default user does not need a username.
