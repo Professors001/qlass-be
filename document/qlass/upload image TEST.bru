@@ -5,13 +5,13 @@ meta {
 }
 
 post {
-  url: http://localhost:8080/test/upload
+  url: {{base_url}}/test/upload
   body: multipartForm
   auth: inherit
 }
 
 body:multipart-form {
-  file: @file(/Users/bankaphisit/Downloads/IMG_5519.JPG)
+  file: @file(/Users/bankaphisit/Downloads/meme-pepe-the-frog-on-the-toilet-sad-desktop-wallpaper-cover.JPG)
 }
 
 settings {

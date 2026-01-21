@@ -9,6 +9,7 @@ import (
 	"qlass-be/domain/entities"
 	"qlass-be/infrastructure/cache"
 	"qlass-be/infrastructure/middleware"
+	"qlass-be/infrastructure/storage"
 	"qlass-be/router"
 
 	"github.com/gin-gonic/gin"
@@ -39,6 +40,8 @@ func main() {
 		log.Printf("✅ MinIO bucket '%s' is ready", cfg.MinioBucketName)
 	}
 
+	storageService := storage.NewMinioStorageService(minioClient)
+
 	// Migration
 	if err := db.AutoMigrate(
 		&entities.User{}, &entities.Class{}, &entities.ClassEnrollment{},
@@ -52,7 +55,7 @@ func main() {
 	r := gin.Default()
 
 	// Init Routers
-	router.SetUpRouters(r, cfg, db, cacheHelper, jwtService, minioClient)
+	router.SetUpRouters(r, cfg, db, cacheHelper, jwtService, storageService)
 
 	serverAddr := fmt.Sprintf("%s", cfg.AppPort)
 	log.Printf("🚀 Server running on port %s", serverAddr)

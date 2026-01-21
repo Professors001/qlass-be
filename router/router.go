@@ -9,14 +9,14 @@ import (
 	"qlass-be/config"
 	"qlass-be/infrastructure/cache"
 	"qlass-be/infrastructure/middleware"
+	"qlass-be/infrastructure/storage"
 	"qlass-be/usecases"
 
 	"github.com/gin-gonic/gin"
-	"github.com/minio/minio-go/v7"
 	"gorm.io/gorm"
 )
 
-func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cache *cache.CacheHelper, jwtService middleware.JwtService, minioClient *minio.Client) {
+func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cache *cache.CacheHelper, jwtService middleware.JwtService, storageService storage.StorageService) {
 
 	// Seed Users (Admin, Teacher, Student) if not exists
 	databases.SeedUsers(db)
@@ -31,7 +31,7 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cache *cache.C
 	classUseCase := usecases.NewClassUseCase(classRepo, enrollRepo)
 	classHandler := rest.NewClassHandler(classUseCase)
 
-	fileUseCase := usecases.NewFileUseCase(minioClient)
+	fileUseCase := usecases.NewFileUseCase(storageService)
 	fileController := rest.NewFileController(fileUseCase, cfg)
 
 	handler := api.ProvideHandler(userHandler, classHandler, fileController)

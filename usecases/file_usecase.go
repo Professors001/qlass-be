@@ -4,10 +4,8 @@ import (
 	"context"
 	"fmt"
 	"mime/multipart"
-	"net/url"
+	"qlass-be/infrastructure/storage"
 	"time"
-
-	"github.com/minio/minio-go/v7"
 )
 
 type FileUseCase interface {
@@ -16,29 +14,21 @@ type FileUseCase interface {
 }
 
 type fileUseCase struct {
-	minioClient *minio.Client
+	storageService storage.StorageService
 }
 
-func NewFileUseCase(minioClient *minio.Client) FileUseCase {
+func NewFileUseCase(storageService storage.StorageService) FileUseCase {
 	return &fileUseCase{
-		minioClient: minioClient,
+		storageService: storageService,
 	}
 }
 
 func (u *fileUseCase) UploadFile(ctx context.Context, file *multipart.FileHeader, bucketName string) (string, error) {
-	src, err := file.Open()
-	if err != nil {
-		return "", err
-	}
-	defer src.Close()
-
 	// Generate unique object name
 	objectName := fmt.Sprintf("%d_%s", time.Now().UnixNano(), file.Filename)
 
-	// Upload to MinIO
-	_, err = u.minioClient.PutObject(ctx, bucketName, objectName, src, file.Size, minio.PutObjectOptions{
-		ContentType: file.Header.Get("Content-Type"),
-	})
+	// Upload using storage service
+	err := u.storageService.Upload(ctx, file, bucketName, objectName)
 	if err != nil {
 		return "", err
 	}
@@ -50,14 +40,5 @@ func (u *fileUseCase) GetFileUrl(ctx context.Context, objectName string, bucketN
 	// Set expiry for the presigned URL (e.g., 1 hour)
 	expiry := time.Hour * 1
 
-	reqParams := make(url.Values)
-	// Optional: Force download
-	// reqParams.Set("response-content-disposition", "attachment; filename=\""+objectName+"\"")
-
-	presignedURL, err := u.minioClient.PresignedGetObject(ctx, bucketName, objectName, expiry, reqParams)
-	if err != nil {
-		return "", err
-	}
-
-	return presignedURL.String(), nil
+	return u.storageService.GetPresignedURL(ctx, bucketName, objectName, expiry)
 }
