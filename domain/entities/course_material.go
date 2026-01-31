@@ -20,5 +20,4 @@ type CourseMaterial struct {
 	Quiz                *Quiz      `json:"quiz" gorm:"foreignKey:CourseMaterialID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 	QuizPin             *string    `json:"quiz_pin" gorm:"type:varchar(20)"`
 	QuizStatus          string     `json:"quiz_status" gorm:"default:idle;type:varchar(50)"`
-	TimeLimitSeconds    *int       `json:"time_limit_seconds"`
 }

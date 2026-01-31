@@ -55,7 +55,7 @@ func main() {
 	r := gin.Default()
 
 	// Init Routers
-	router.SetUpRouters(r, cfg, db, cacheHelper, jwtService, storageService)
+	router.SetUpRouters(r, cfg, db, cacheHelper, jwtService, storageService) //, attachmentRepo
 
 	serverAddr := fmt.Sprintf("%s", cfg.AppPort)
 	log.Printf("🚀 Server running on port %s", serverAddr)

@@ -11,6 +11,7 @@ import (
 	"qlass-be/infrastructure/middleware"
 	"qlass-be/infrastructure/storage"
 	"qlass-be/usecases"
+	_ "qlass-be/usecases"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -31,16 +32,10 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cache *cache.C
 	classUseCase := usecases.NewClassUseCase(classRepo, enrollRepo)
 	classHandler := rest.NewClassHandler(classUseCase)
 
-	fileUseCase := usecases.NewFileUseCase(storageService)
-	fileController := rest.NewFileController(fileUseCase, cfg)
-
-	handler := api.ProvideHandler(userHandler, classHandler, fileController)
+	handler := api.ProvideHandler(userHandler, classHandler)
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "Qlass BE is still running!"})
 	})
-
-	r.POST("/test/upload", fileController.Upload)
-	r.GET("/test/file", fileController.GetUrl)
 
 	// Users
 	userRouter := r.Group("/auth")
