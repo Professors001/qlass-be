@@ -6,10 +6,9 @@ import (
 	"qlass-be/adapters/api/rest"
 	"qlass-be/adapters/databases"
 	"qlass-be/adapters/redis"
+	"qlass-be/adapters/storage"
 	"qlass-be/config"
-	"qlass-be/infrastructure/cache"
-	"qlass-be/infrastructure/middleware"
-	"qlass-be/infrastructure/storage"
+	"qlass-be/middleware"
 	"qlass-be/usecases"
 	_ "qlass-be/usecases"
 
@@ -17,7 +16,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cache *cache.CacheHelper, jwtService middleware.JwtService, storageService storage.StorageService) {
+func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cache *redis.CacheHelper, jwtService middleware.JwtService, storageService storage.StorageService) {
 
 	// Seed Users (Admin, Teacher, Student) if not exists
 	databases.SeedUsers(db)

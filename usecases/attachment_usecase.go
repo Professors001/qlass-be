@@ -7,7 +7,7 @@ import (
 	"qlass-be/config"
 	"qlass-be/domain/entities"
 	"qlass-be/domain/repositories"
-	"qlass-be/infrastructure/storage"
+	"qlass-be/adapters/storage"
 	"time"
 )
 

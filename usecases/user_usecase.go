@@ -7,7 +7,7 @@ import (
 	"qlass-be/domain/entities"
 	"qlass-be/domain/repositories"
 	"qlass-be/dtos"
-	"qlass-be/infrastructure/middleware"
+	"qlass-be/middleware"
 	"qlass-be/transform"
 	"time"
 

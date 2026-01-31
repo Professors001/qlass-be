@@ -3,7 +3,7 @@ package rest
 import (
 	"net/http"
 	"qlass-be/dtos"
-	"qlass-be/infrastructure/middleware" // ตรวจสอบว่าชี้ไปยัง package ที่มี JWTCustomClaims
+	"qlass-be/middleware"
 	"qlass-be/usecases"
 	"strconv"
 

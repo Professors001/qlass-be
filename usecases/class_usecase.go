@@ -6,8 +6,8 @@ import (
 	"qlass-be/domain/entities"
 	"qlass-be/domain/repositories"
 	"qlass-be/dtos"
-	"qlass-be/infrastructure/utils"
 	"qlass-be/transform"
+	"qlass-be/utils"
 	"strconv"
 )
 

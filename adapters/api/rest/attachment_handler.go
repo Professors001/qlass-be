@@ -3,7 +3,7 @@ package rest
 import (
 	"net/http"
 	"qlass-be/dtos"
-	"qlass-be/infrastructure/middleware"
+	"qlass-be/middleware"
 	"qlass-be/usecases"
 
 	"github.com/gin-gonic/gin"

@@ -5,15 +5,14 @@ import (
 	"log"
 	"qlass-be/domain/repositories"
 	"qlass-be/dtos"
-	"qlass-be/infrastructure/cache"
 	"time"
 )
 
 type UserRedisRepository struct {
-	helper *cache.CacheHelper
+	helper *CacheHelper
 }
 
-func NewUserRedisRepository(helper *cache.CacheHelper) repositories.UserCacheRepository {
+func NewUserRedisRepository(helper *CacheHelper) repositories.UserCacheRepository {
 	return &UserRedisRepository{
 		helper: helper,
 	}
