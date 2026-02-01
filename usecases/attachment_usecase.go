@@ -16,10 +16,10 @@ import (
 type AttachmentUseCase interface {
 	UploadAttachment(userID uint, fileHeader *multipart.FileHeader) (*dtos.UploadAttachmentResponseDto, error)
 	GetAttachmentByID(id uint) (*dtos.GetAttachmentResponseDto, error)
-	// GetAttachmentsByCourseMaterialID(courseMaterialID uint) ([]*entities.Attachment, error)
-	// GetAttachmentsBySubmissionID(submissionID uint) ([]*entities.Attachment, error)
-	// UpdateAttachment(dto *dtos.UpdateAttachmentDto, claims *middleware.JWTCustomClaims) (*entities.Attachment, error)
-	// DeleteAttachment(id uint) error
+	GetAttachmentsByCourseMaterialID(courseMaterialID uint) ([]*entities.Attachment, error)
+	GetAttachmentsBySubmissionID(submissionID uint) ([]*entities.Attachment, error)
+	UpdateAttachment(dto *dtos.UpdateAttachmentDto) error
+	DeleteAttachment(id uint) error
 }
 
 type attachmentUseCase struct {
@@ -97,6 +97,33 @@ func (u *attachmentUseCase) GetAttachmentByID(id uint) (*dtos.GetAttachmentRespo
 	return getResponse, nil
 }
 
-// func (u *attachmentUseCase) GetAttachmentsByCourseMaterialID(courseMaterialID uint) ([]*entities.Attachment, error) {
-// 	return u.attachmentRepo.GetByCourseMaterialID(courseMaterialID)
-// }
+func (u *attachmentUseCase) GetAttachmentsByCourseMaterialID(courseMaterialID uint) ([]*entities.Attachment, error) {
+	return u.attachmentRepo.GetByCourseMaterialID(courseMaterialID)
+}
+
+func (u *attachmentUseCase) GetAttachmentsBySubmissionID(submissionID uint) ([]*entities.Attachment, error) {
+	return u.attachmentRepo.GetBySubmissionID(submissionID)
+}
+func (u *attachmentUseCase) UpdateAttachment(dto *dtos.UpdateAttachmentDto) error {
+	attachment, err := u.attachmentRepo.GetByID(dto.AttachmentID)
+	if err != nil {
+		return err
+	}
+
+	switch dto.Type {
+	case "course_material":
+		attachment.CourseMaterialID = &dto.LinkID
+		attachment.SubmissionID = nil
+	case "submission":
+		attachment.SubmissionID = &dto.LinkID
+		attachment.CourseMaterialID = nil
+	default:
+		return fmt.Errorf("invalid attachment type: %s", dto.Type)
+	}
+
+	return u.attachmentRepo.Update(attachment)
+}
+
+func (u *attachmentUseCase) DeleteAttachment(id uint) error {
+	return u.attachmentRepo.Delete(id)
+}

@@ -46,6 +46,13 @@ func (r *postgresAttachmentRepository) GetBySubmissionID(submissionID uint) ([]*
 	return attachments, nil
 }
 
+func (r *postgresAttachmentRepository) Update(attachment *entities.Attachment) error {
+	if err := r.db.Save(attachment).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
 func (r *postgresAttachmentRepository) Delete(id uint) error {
 	// Soft delete
 	var attachment entities.Attachment
