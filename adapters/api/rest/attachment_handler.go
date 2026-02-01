@@ -5,6 +5,7 @@ import (
 	"qlass-be/dtos"
 	"qlass-be/middleware"
 	"qlass-be/usecases"
+	"qlass-be/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -56,15 +57,40 @@ func (h *AttachmentHandler) UploadAttachment(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, dtos.UploadAttachmentResponseDto{
-		AttachmentID: attachment.ID,
-		FileURL:      attachment.FileURL,
-	})
+	ctx.JSON(http.StatusOK, attachment)
 
 }
 
-func (h *AttachmentHandler) GetAttachment() {
+func (h *AttachmentHandler) GetAttachment(ctx *gin.Context) {
+	val, exists := ctx.Get("currentUser")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, dtos.GlobalErrorResponse{
+			Error:   "UNAUTHORIZED",
+			Message: "User context not found",
+		})
+		return
+	}
 
+	_, ok := val.(*middleware.JWTCustomClaims)
+	if !ok {
+		ctx.JSON(http.StatusInternalServerError, dtos.GlobalErrorResponse{
+			Error:   "INTERNAL_ERROR",
+			Message: "Failed to cast user context",
+		})
+		return
+	}
+
+	attachmentID := ctx.Param("attachmentID")
+	attachment, err := h.UseCase.GetAttachmentByID(utils.StringToUint(attachmentID))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, dtos.GlobalErrorResponse{
+			Error:   "INTERNAL_ERROR",
+			Message: "Failed to get attachment: " + err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, attachment)
 }
 
 func (h *AttachmentHandler) GetAttachmentsByCourseMaterialID() {

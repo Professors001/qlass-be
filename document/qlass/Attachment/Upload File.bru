@@ -1,0 +1,24 @@
+meta {
+  name: Upload File
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base_url}}/attachments
+  body: multipartForm
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoidGVhY2hlciIsImV4cCI6MTc3MDIyMDU5MH0.Mqjr1yCwY5Q1cH6XIXV1ciiDQC1tbZSPV-aFfBlzg7o
+}
+
+body:multipart-form {
+  attachment: @file(/Users/bankaphisit/Documents/Playground/IMG_5519.JPG)
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

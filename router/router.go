@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"qlass-be/adapters/api"
 	"qlass-be/adapters/api/rest"
+	"qlass-be/adapters/cache"
 	"qlass-be/adapters/databases"
-	"qlass-be/adapters/redis"
 	"qlass-be/adapters/storage"
 	"qlass-be/config"
 	"qlass-be/middleware"
@@ -16,13 +16,13 @@ import (
 	"gorm.io/gorm"
 )
 
-func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cache *redis.CacheHelper, jwtService middleware.JwtService, storageService storage.StorageService) {
+func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *cache.CacheHelper, jwtService middleware.JwtService, storageService storage.StorageService) {
 
 	// Seed Users (Admin, Teacher, Student) if not exists
 	databases.SeedUsers(db)
 
 	userRepo := databases.NewPostgresUserRepository(db)
-	userCacheRepo := redis.NewUserRedisRepository(cache)
+	userCacheRepo := cache.NewUserRedisRepository(cacheService)
 	userUseCase := usecases.NewUserUseCase(userRepo, userCacheRepo, jwtService)
 	userHandler := rest.NewUserHandler(userUseCase)
 
@@ -30,6 +30,10 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cache *redis.C
 	enrollRepo := databases.NewPostgresEnrollRepository(db)
 	classUseCase := usecases.NewClassUseCase(classRepo, enrollRepo)
 	classHandler := rest.NewClassHandler(classUseCase)
+
+	attachmentRepo := databases.NewPostgresAttachmentRepository(db)
+	attachmentUseCase := usecases.NewAttachmentUseCase(storageService, attachmentRepo, userRepo, cfg)
+	attachmentHandler := rest.NewAttachmentHandler(attachmentUseCase)
 
 	handler := api.ProvideHandler(userHandler, classHandler)
 	r.GET("/", func(c *gin.Context) {
@@ -51,4 +55,10 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cache *redis.C
 	classRouter.POST("/join", middleware.AuthorizeJWT(jwtService), handler.ClassHandler.EnrollStudent)
 	classRouter.GET("/:id/students", middleware.AuthorizeJWT(jwtService), handler.ClassHandler.GetEnrolledStudents)
 	classRouter.GET("/invite/:code", handler.ClassHandler.GetClassDetailsByInviteCode)
+
+	// Attachments
+	attachmentRouter := r.Group("/attachments")
+	attachmentRouter.Use(middleware.AuthorizeJWT(jwtService))
+	attachmentRouter.POST("/", attachmentHandler.UploadAttachment)
+	attachmentRouter.GET("/:attachmentID", attachmentHandler.GetAttachment)
 }

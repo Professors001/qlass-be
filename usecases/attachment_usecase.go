@@ -4,16 +4,18 @@ import (
 	"context"
 	"fmt"
 	"mime/multipart"
+	"qlass-be/adapters/storage"
 	"qlass-be/config"
 	"qlass-be/domain/entities"
 	"qlass-be/domain/repositories"
-	"qlass-be/adapters/storage"
+	"qlass-be/dtos"
+	"qlass-be/transform"
 	"time"
 )
 
 type AttachmentUseCase interface {
-	UploadAttachment(userID uint, fileHeader *multipart.FileHeader) (*entities.Attachment, error)
-	// GetAttachmentByID(id uint) (*entities.Attachment, error)
+	UploadAttachment(userID uint, fileHeader *multipart.FileHeader) (*dtos.UploadAttachmentResponseDto, error)
+	GetAttachmentByID(id uint) (*dtos.GetAttachmentResponseDto, error)
 	// GetAttachmentsByCourseMaterialID(courseMaterialID uint) ([]*entities.Attachment, error)
 	// GetAttachmentsBySubmissionID(submissionID uint) ([]*entities.Attachment, error)
 	// UpdateAttachment(dto *dtos.UpdateAttachmentDto, claims *middleware.JWTCustomClaims) (*entities.Attachment, error)
@@ -23,18 +25,20 @@ type AttachmentUseCase interface {
 type attachmentUseCase struct {
 	storageService storage.StorageService
 	attachmentRepo repositories.AttachmentRepository
+	userRepo       repositories.UserRepository
 	cfg            *config.Config
 }
 
-func NewAttachmentUseCase(storageService storage.StorageService, attachmentRepo repositories.AttachmentRepository, cfg *config.Config) AttachmentUseCase {
+func NewAttachmentUseCase(storageService storage.StorageService, attachmentRepo repositories.AttachmentRepository, userRepo repositories.UserRepository, cfg *config.Config) AttachmentUseCase {
 	return &attachmentUseCase{
 		storageService: storageService,
 		attachmentRepo: attachmentRepo,
+		userRepo:       userRepo,
 		cfg:            cfg,
 	}
 }
 
-func (u *attachmentUseCase) UploadAttachment(userID uint, file *multipart.FileHeader) (*entities.Attachment, error) {
+func (u *attachmentUseCase) UploadAttachment(userID uint, file *multipart.FileHeader) (*dtos.UploadAttachmentResponseDto, error) {
 	bucketName := u.cfg.MinioBucketName
 
 	objectName := fmt.Sprintf("%d_%s", time.Now().UnixNano(), file.Filename)
@@ -53,7 +57,6 @@ func (u *attachmentUseCase) UploadAttachment(userID uint, file *multipart.FileHe
 	attachment := &entities.Attachment{
 		Filename:   file.Filename,
 		ObjectKey:  objectName, // Store the key, not the expiring URL
-		FileURL:    fileURL,    // Populate transient field for response
 		FileType:   file.Header.Get("Content-Type"),
 		FileSize:   int(file.Size),
 		UploaderID: userID,
@@ -64,5 +67,36 @@ func (u *attachmentUseCase) UploadAttachment(userID uint, file *multipart.FileHe
 		return nil, err
 	}
 
-	return attachment, nil
+	uploadResponse := transform.ToUploadAttachmentResponseDto(attachment, fileURL)
+
+	return uploadResponse, nil
 }
+
+func (u *attachmentUseCase) GetAttachmentByID(id uint) (*dtos.GetAttachmentResponseDto, error) {
+	attachment, err := u.attachmentRepo.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	// Hydrate Uploader if not preloaded by repository
+	if attachment.Uploader.ID == 0 {
+		user, err := u.userRepo.GetByID(attachment.UploaderID)
+		if err == nil {
+			attachment.Uploader = *user
+		}
+	}
+
+	bucketName := u.cfg.MinioBucketName
+	fileURL, err := u.storageService.GetPresignedURL(context.Background(), bucketName, attachment.ObjectKey, time.Hour*1)
+	if err != nil {
+		return nil, err
+	}
+
+	getResponse := transform.ToGetAttachmentResponseDto(attachment, fileURL)
+
+	return getResponse, nil
+}
+
+// func (u *attachmentUseCase) GetAttachmentsByCourseMaterialID(courseMaterialID uint) ([]*entities.Attachment, error) {
+// 	return u.attachmentRepo.GetByCourseMaterialID(courseMaterialID)
+// }

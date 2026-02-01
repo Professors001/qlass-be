@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"qlass-be/adapters/redis"
+	"qlass-be/adapters/cache"
 	"qlass-be/adapters/storage"
 	"qlass-be/config"
 	"qlass-be/domain/entities"
@@ -27,8 +27,8 @@ func main() {
 		log.Fatalf("❌ Failed to connect to Redis: %v. Check REDIS_PASSWORD in .env", err)
 	}
 
-	cacheService := redis.NewCacheService(redisClient)
-	cacheHelper := redis.NewCacheHelper(cacheService)
+	cacheService := cache.NewCacheService(redisClient)
+	cacheHelper := cache.NewCacheHelper(cacheService)
 
 	// Verify MinIO Bucket
 	exists, err := minioClient.BucketExists(context.Background(), cfg.MinioBucketName)
