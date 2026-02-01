@@ -6,7 +6,7 @@ import (
 	"gorm.io/gorm"
 )
 
-type CourseMaterial struct {
+type ClassMaterial struct {
 	gorm.Model
 	ClassID             uint       `json:"class_id" gorm:"not null;index"`
 	Class               Class      `json:"class" gorm:"foreignKey:ClassID"`

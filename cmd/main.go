@@ -45,7 +45,7 @@ func main() {
 	// Migration
 	if err := db.AutoMigrate(
 		&entities.User{}, &entities.Class{}, &entities.ClassEnrollment{},
-		&entities.CourseMaterial{}, &entities.Attachment{},
+		&entities.ClassMaterial{}, &entities.Attachment{},
 		&entities.Quiz{}, &entities.QuizQuestion{}, &entities.QuizOption{},
 		&entities.QuizGameLog{}, &entities.Submission{}); err != nil {
 		log.Fatalf("❌ Migration failed: %v", err)

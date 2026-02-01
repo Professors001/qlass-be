@@ -12,15 +12,15 @@ type UploadAttachmentResponseDto struct {
 }
 
 type GetAttachmentResponseDto struct {
-	AttachmentID uint   `json:"attachment_id"`
-	FileURL      string `json:"file_url"`
-	Filename     string `json:"filename"`
-	FileSize	 int    `json:"file_size"`
-	FileType     string `json:"file_type"`
-	UploaderID   uint   `json:"uploader_id"`
-	UploaderName string `json:"uploader_name"`
-	UploaderRole string `json:"uploader_role"`
-	CourseMaterialID *uint  `json:"course_material_id,omitempty"`
-	SubmissionID     *uint  `json:"submission_id,omitempty"`
-	UploadedAt   string `json:"uploaded_at"`
+	AttachmentID    uint   `json:"attachment_id"`
+	FileURL         string `json:"file_url"`
+	Filename        string `json:"filename"`
+	FileSize        int    `json:"file_size"`
+	FileType        string `json:"file_type"`
+	UploaderID      uint   `json:"uploader_id"`
+	UploaderName    string `json:"uploader_name"`
+	UploaderRole    string `json:"uploader_role"`
+	ClassMaterialID *uint  `json:"class_material_id,omitempty"`
+	SubmissionID    *uint  `json:"submission_id,omitempty"`
+	UploadedAt      string `json:"uploaded_at"`
 }

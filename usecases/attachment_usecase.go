@@ -111,12 +111,12 @@ func (u *attachmentUseCase) UpdateAttachment(dto *dtos.UpdateAttachmentDto) erro
 	}
 
 	switch dto.Type {
-	case "course_material":
-		attachment.CourseMaterialID = &dto.LinkID
+	case "class_material":
+		attachment.ClassMaterialID = &dto.LinkID
 		attachment.SubmissionID = nil
 	case "submission":
 		attachment.SubmissionID = &dto.LinkID
-		attachment.CourseMaterialID = nil
+		attachment.ClassMaterialID = nil
 	default:
 		return fmt.Errorf("invalid attachment type: %s", dto.Type)
 	}
