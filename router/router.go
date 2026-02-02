@@ -50,8 +50,8 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 
 	// Classes
 	classRouter := r.Group("/classes")
-	classRouter.POST("/", middleware.AuthorizeJWT(jwtService), handler.ClassHandler.CreateClass)
-	classRouter.GET("/", middleware.AuthorizeJWT(jwtService), handler.ClassHandler.GetAllMyClasses)
+	classRouter.POST("", middleware.AuthorizeJWT(jwtService), handler.ClassHandler.CreateClass)
+	classRouter.GET("", middleware.AuthorizeJWT(jwtService), handler.ClassHandler.GetAllMyClasses)
 	classRouter.GET("/:id", middleware.AuthorizeJWT(jwtService), handler.ClassHandler.GetClassByID)
 	classRouter.POST("/join", middleware.AuthorizeJWT(jwtService), handler.ClassHandler.EnrollStudent)
 	classRouter.GET("/:id/students", middleware.AuthorizeJWT(jwtService), handler.ClassHandler.GetEnrolledStudents)
@@ -60,6 +60,6 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	// Attachments
 	attachmentRouter := r.Group("/attachments")
 	attachmentRouter.Use(middleware.AuthorizeJWT(jwtService))
-	attachmentRouter.POST("/", handler.AttachmentHandler.UploadAttachment)
+	attachmentRouter.POST("", handler.AttachmentHandler.UploadAttachment)
 	attachmentRouter.GET("/:attachmentID", handler.AttachmentHandler.GetAttachment)
 }
