@@ -1,0 +1,20 @@
+meta {
+  name: Get Class By Id
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/classes/1
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoidGVhY2hlciIsImV4cCI6MTc3MDI2OTQxOX0.TnaH8MqmunujMKAP213bydW3vqimh6b83oFCrlNclIM
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

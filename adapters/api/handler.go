@@ -5,13 +5,15 @@ import (
 )
 
 type Handler struct {
-	UserHandler  *rest.UserHandler
-	ClassHandler *rest.ClassHandler
+	UserHandler       *rest.UserHandler
+	ClassHandler      *rest.ClassHandler
+	AttachmentHandler *rest.AttachmentHandler
 }
 
-func ProvideHandler(userHandler *rest.UserHandler, classHandler *rest.ClassHandler) *Handler {
+func ProvideHandler(userHandler *rest.UserHandler, classHandler *rest.ClassHandler, attachmentHandler *rest.AttachmentHandler) *Handler {
 	return &Handler{
-		UserHandler:  userHandler,
-		ClassHandler: classHandler,
+		UserHandler:       userHandler,
+		ClassHandler:      classHandler,
+		AttachmentHandler: attachmentHandler,
 	}
 }

@@ -170,3 +170,39 @@ func (h *ClassHandler) GetEnrolledStudents(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"data": res})
 }
+
+func (h *ClassHandler) GetClassByID(c *gin.Context) {
+
+	val, exists := c.Get("currentUser")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, dtos.GlobalErrorResponse{
+			Error:   "UNAUTHORIZED",
+			Message: "User context not found",
+		})
+		return
+	}
+
+	claims, ok := val.(*middleware.JWTCustomClaims)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, dtos.GlobalErrorResponse{
+			Error:   "INTERNAL_ERROR",
+			Message: "Failed to cast user context",
+		})
+		return
+	}
+
+	classIDStr := c.Param("id")
+	classID, err := strconv.ParseUint(classIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, dtos.GlobalErrorResponse{Error: "BAD_REQUEST", Message: "Invalid class ID"})
+		return
+	}
+
+	res, err := h.UseCase.GetClassByID(c.Request.Context(), uint(classID), claims.UserId)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dtos.GlobalErrorResponse{Error: "INTERNAL_ERROR", Message: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": res})
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"qlass-be/adapters/cache"
 	"qlass-be/adapters/storage"
@@ -12,6 +13,7 @@ import (
 	"qlass-be/middleware"
 	"qlass-be/router"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -53,6 +55,15 @@ func main() {
 
 	// Init Gin Framework
 	r := gin.Default()
+
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:3000"}, // อนุญาต Next.js ของคุณ
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true, // สำคัญมากถ้าจะใช้ Cookies/Auth.js
+		MaxAge:           12 * time.Hour,
+	}))
 
 	// Init Routers
 	router.SetUpRouters(r, cfg, db, cacheHelper, jwtService, storageService) //, attachmentRepo

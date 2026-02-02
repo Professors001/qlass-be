@@ -35,7 +35,7 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	attachmentUseCase := usecases.NewAttachmentUseCase(storageService, attachmentRepo, userRepo, cfg)
 	attachmentHandler := rest.NewAttachmentHandler(attachmentUseCase)
 
-	handler := api.ProvideHandler(userHandler, classHandler)
+	handler := api.ProvideHandler(userHandler, classHandler, attachmentHandler)
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "Qlass BE is still running!"})
 	})
@@ -52,6 +52,7 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	classRouter := r.Group("/classes")
 	classRouter.POST("/", middleware.AuthorizeJWT(jwtService), handler.ClassHandler.CreateClass)
 	classRouter.GET("/", middleware.AuthorizeJWT(jwtService), handler.ClassHandler.GetAllMyClasses)
+	classRouter.GET("/:id", middleware.AuthorizeJWT(jwtService), handler.ClassHandler.GetClassByID)
 	classRouter.POST("/join", middleware.AuthorizeJWT(jwtService), handler.ClassHandler.EnrollStudent)
 	classRouter.GET("/:id/students", middleware.AuthorizeJWT(jwtService), handler.ClassHandler.GetEnrolledStudents)
 	classRouter.GET("/invite/:code", handler.ClassHandler.GetClassDetailsByInviteCode)
@@ -59,6 +60,6 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	// Attachments
 	attachmentRouter := r.Group("/attachments")
 	attachmentRouter.Use(middleware.AuthorizeJWT(jwtService))
-	attachmentRouter.POST("/", attachmentHandler.UploadAttachment)
-	attachmentRouter.GET("/:attachmentID", attachmentHandler.GetAttachment)
+	attachmentRouter.POST("/", handler.AttachmentHandler.UploadAttachment)
+	attachmentRouter.GET("/:attachmentID", handler.AttachmentHandler.GetAttachment)
 }

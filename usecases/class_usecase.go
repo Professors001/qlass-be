@@ -18,6 +18,7 @@ type ClassUseCase interface {
 	GetAllMyClasses(ctx context.Context, userID uint) ([]dtos.ClassDetailsDto, error)
 	EnrollStudent(ctx context.Context, inviteCode string, studentID uint) error
 	GetEnrolledStudentsByClassID(ctx context.Context, classID uint) (*dtos.SummaryEnrolledStudentsDto, error)
+	GetClassByID(ctx context.Context, classID uint, userID uint) (*dtos.ClassDetailsDto, error)
 }
 
 type classUseCase struct {
@@ -156,6 +157,33 @@ func (c *classUseCase) GetEnrolledStudentsByClassID(ctx context.Context, classID
 		Teachers:     teachers,
 		Students:     students,
 	}, nil
+}
+
+func (c *classUseCase) GetClassByID(ctx context.Context, classID uint, userID uint) (*dtos.ClassDetailsDto, error) {
+
+	enrollments, err := c.classRepo.GetByUserID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	var class *entities.Class
+	var role string
+	for _, enrollment := range enrollments {
+		if enrollment.ClassID == classID {
+			class = &enrollment.Class
+			role = enrollment.Role
+			break
+		}
+	}
+
+	if class == nil {
+		return nil, errors.New("class not found or not enrolled")
+	}
+
+	classDetailsDto := transform.EntityToClassDetailsDto(*class)
+	classDetailsDto.Role = role
+
+	return &classDetailsDto, nil
 }
 
 func (c *classUseCase) generateUniqueInviteCode(_ context.Context) (string, error) {
