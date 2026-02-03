@@ -16,7 +16,7 @@ import (
 type AttachmentUseCase interface {
 	UploadAttachment(userID uint, fileHeader *multipart.FileHeader) (*dtos.UploadAttachmentResponseDto, error)
 	GetAttachmentByID(id uint) (*dtos.GetAttachmentResponseDto, error)
-	GetAttachmentsByCourseMaterialID(courseMaterialID uint) ([]*entities.Attachment, error)
+	GetAttachmentsByClassMaterialID(classMaterialID uint) ([]*dtos.GetAttachmentResponseDto, error)
 	GetAttachmentsBySubmissionID(submissionID uint) ([]*entities.Attachment, error)
 	UpdateAttachment(dto *dtos.UpdateAttachmentDto) error
 	DeleteAttachment(id uint) error
@@ -78,27 +78,31 @@ func (u *attachmentUseCase) GetAttachmentByID(id uint) (*dtos.GetAttachmentRespo
 		return nil, err
 	}
 
-	// Hydrate Uploader if not preloaded by repository
-	if attachment.Uploader.ID == 0 {
-		user, err := u.userRepo.GetByID(attachment.UploaderID)
-		if err == nil {
-			attachment.Uploader = *user
-		}
-	}
+	return u.enrichAttachment(attachment)
+}
 
-	bucketName := u.cfg.MinioBucketName
-	fileURL, err := u.storageService.GetPresignedURL(context.Background(), bucketName, attachment.ObjectKey, time.Hour*1)
+func (u *attachmentUseCase) GetAttachmentsByClassMaterialID(classMaterialID uint) ([]*dtos.GetAttachmentResponseDto, error) {
+	// 1. Get raw entities from repo
+	attachments, err := u.attachmentRepo.GetByClassMaterialID(classMaterialID)
 	if err != nil {
 		return nil, err
 	}
 
-	getResponse := transform.ToGetAttachmentResponseDto(attachment, fileURL)
+	// 2. Transform and enrich each attachment
+	response := make([]*dtos.GetAttachmentResponseDto, 0, len(attachments))
 
-	return getResponse, nil
-}
+	for _, att := range attachments {
+		dto, err := u.enrichAttachment(att)
+		if err != nil {
+			// Option A: Log error and continue (skip broken files)
+			// Option B: Return error immediately (fail whole request)
+			// Here we choose Option A to ensure the UI gets at least the working files
+			continue
+		}
+		response = append(response, dto)
+	}
 
-func (u *attachmentUseCase) GetAttachmentsByCourseMaterialID(courseMaterialID uint) ([]*entities.Attachment, error) {
-	return u.attachmentRepo.GetByCourseMaterialID(courseMaterialID)
+	return response, nil
 }
 
 func (u *attachmentUseCase) GetAttachmentsBySubmissionID(submissionID uint) ([]*entities.Attachment, error) {
@@ -126,4 +130,24 @@ func (u *attachmentUseCase) UpdateAttachment(dto *dtos.UpdateAttachmentDto) erro
 
 func (u *attachmentUseCase) DeleteAttachment(id uint) error {
 	return u.attachmentRepo.Delete(id)
+}
+
+func (u *attachmentUseCase) enrichAttachment(attachment *entities.Attachment) (*dtos.GetAttachmentResponseDto, error) {
+	// 1. Hydrate Uploader if missing
+	if attachment.Uploader.ID == 0 {
+		user, err := u.userRepo.GetByID(attachment.UploaderID)
+		if err == nil {
+			attachment.Uploader = *user
+		}
+	}
+
+	// 2. Generate Presigned URL
+	bucketName := u.cfg.MinioBucketName
+	fileURL, err := u.storageService.GetPresignedURL(context.Background(), bucketName, attachment.ObjectKey, time.Hour*1)
+	if err != nil {
+		return nil, err
+	}
+
+	// 3. Transform to DTO
+	return transform.ToGetAttachmentResponseDto(attachment, fileURL), nil
 }

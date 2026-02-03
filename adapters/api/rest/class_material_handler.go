@@ -5,6 +5,7 @@ import (
 	"qlass-be/dtos"
 	"qlass-be/middleware"
 	"qlass-be/usecases"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -45,4 +46,21 @@ func (h *MaterialHandler) CreateMaterial(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"message": "Material created successfully"})
+}
+
+func (h *MaterialHandler) GetMaterialByID(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, dtos.GlobalErrorResponse{Error: "BAD_REQUEST", Message: "Invalid material ID"})
+		return
+	}
+
+	res, err := h.materialUseCase.GetMaterialByID(uint(id))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dtos.GlobalErrorResponse{Error: "INTERNAL_ERROR", Message: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": res})
 }

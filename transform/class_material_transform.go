@@ -16,3 +16,17 @@ func CreateToEntity(dto *dtos.CreateClassMaterialDto) *entities.ClassMaterial {
 		DueAt:       dto.DueAt,
 	}
 }
+
+func EntityToGetClassMaterialDtoWithAttachments(material *entities.ClassMaterial, attachments []*dtos.GetAttachmentResponseDto) *dtos.GetClassMaterialDto {
+	return &dtos.GetClassMaterialDto{
+		ID:          material.ID,
+		ClassID:     material.ClassID,
+		Type:        material.Type,
+		Title:       material.Title,
+		Description: material.Description,
+		Attachments: attachments,
+		CreatedAt:   material.CreatedAt,
+		Points:      material.Points,
+		DueAt:       material.DueAt,
+	}
+}

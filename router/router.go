@@ -36,7 +36,7 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	attachmentHandler := rest.NewAttachmentHandler(attachmentUseCase)
 
 	classMaterialRepo := databases.NewPostgresClassMaterialRepository(db)
-	classMaterialUseCase := usecases.NewClassMaterialUseCase(classMaterialRepo, classRepo, attachmentRepo)
+	classMaterialUseCase := usecases.NewClassMaterialUseCase(classMaterialRepo, classRepo, attachmentRepo, attachmentUseCase)
 	classMaterialHandler := rest.NewMaterialHandler(classMaterialUseCase)
 
 	handler := api.ProvideHandler(
@@ -75,4 +75,5 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	materialRouter := r.Group("/materials")
 	materialRouter.Use(middleware.AuthorizeJWT(jwtService))
 	materialRouter.POST("", handler.ClassMaterialHandler.CreateMaterial)
+	materialRouter.GET("/:id", handler.ClassMaterialHandler.GetMaterialByID)
 }
