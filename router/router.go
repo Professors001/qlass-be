@@ -35,7 +35,15 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	attachmentUseCase := usecases.NewAttachmentUseCase(storageService, attachmentRepo, userRepo, cfg)
 	attachmentHandler := rest.NewAttachmentHandler(attachmentUseCase)
 
-	handler := api.ProvideHandler(userHandler, classHandler, attachmentHandler)
+	classMaterialRepo := databases.NewPostgresClassMaterialRepository(db)
+	classMaterialUseCase := usecases.NewClassMaterialUseCase(classMaterialRepo, classRepo, attachmentRepo)
+	classMaterialHandler := rest.NewMaterialHandler(classMaterialUseCase)
+
+	handler := api.ProvideHandler(
+		userHandler,
+		classHandler,
+		attachmentHandler,
+		classMaterialHandler)
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "Qlass BE is still running!"})
 	})
@@ -62,4 +70,9 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	attachmentRouter.Use(middleware.AuthorizeJWT(jwtService))
 	attachmentRouter.POST("", handler.AttachmentHandler.UploadAttachment)
 	attachmentRouter.GET("/:attachmentID", handler.AttachmentHandler.GetAttachment)
+
+	// Class Materials
+	materialRouter := r.Group("/materials")
+	materialRouter.Use(middleware.AuthorizeJWT(jwtService))
+	materialRouter.POST("", handler.ClassMaterialHandler.CreateMaterial)
 }

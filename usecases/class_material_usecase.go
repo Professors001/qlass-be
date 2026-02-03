@@ -53,7 +53,7 @@ func (u *classMaterialUseCase) CreateClassMaterial(dto *dtos.CreateClassMaterial
 		return err
 	}
 
-	for _, attachmentID := range dto.AttachmentID {
+	for _, attachmentID := range dto.AttachmentIds {
 		attachment, err := u.attachmentRepo.GetByID(attachmentID)
 		if err != nil {
 			return err
