@@ -68,7 +68,7 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	// Attachments
 	attachmentRouter := r.Group("/attachments")
 	attachmentRouter.Use(middleware.AuthorizeJWT(jwtService))
-	attachmentRouter.POST("", handler.AttachmentHandler.UploadAttachment)
+	attachmentRouter.POST("/upload", handler.AttachmentHandler.UploadAttachment)
 	attachmentRouter.GET("/:attachmentID", handler.AttachmentHandler.GetAttachment)
 
 	// Class Materials
@@ -76,4 +76,5 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	materialRouter.Use(middleware.AuthorizeJWT(jwtService))
 	materialRouter.POST("", handler.ClassMaterialHandler.CreateMaterial)
 	materialRouter.GET("/:id", handler.ClassMaterialHandler.GetMaterialByID)
+	materialRouter.GET("/class/:class_id", handler.ClassMaterialHandler.GetMaterialsByClassID)
 }

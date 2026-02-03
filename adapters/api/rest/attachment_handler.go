@@ -57,7 +57,9 @@ func (h *AttachmentHandler) UploadAttachment(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, attachment)
+	ctx.JSON(http.StatusOK, gin.H{
+		"data": attachment,
+	})
 
 }
 
@@ -90,7 +92,9 @@ func (h *AttachmentHandler) GetAttachment(ctx *gin.Context) {
 		return
 	}
 
-	ctx.JSON(http.StatusOK, attachment)
+	ctx.JSON(http.StatusOK, gin.H{
+		"data": attachment,
+	})
 }
 
 func (h *AttachmentHandler) GetAttachmentsByCourseMaterialID() {

@@ -6,11 +6,13 @@ import (
 	"qlass-be/domain/repositories"
 	"qlass-be/dtos"
 	"qlass-be/transform"
+	"time"
 )
 
 type ClassMaterialUseCase interface {
 	CreateClassMaterial(dto *dtos.CreateClassMaterialDto, ownerID uint) error
 	GetMaterialByID(id uint) (*dtos.GetClassMaterialDto, error)
+	GetMaterialsByClassID(classID uint) ([]*dtos.GetThumnailClassMaterialDto, error)
 }
 
 type classMaterialUseCase struct {
@@ -47,9 +49,14 @@ func (u *classMaterialUseCase) CreateClassMaterial(dto *dtos.CreateClassMaterial
 		Description: dto.Description,
 		ClassID:     dto.ClassID,
 		Type:        dto.Type,
-		IsPublished: dto.Action == "publish",
 		Points:      dto.Points,
 		DueAt:       dto.DueAt,
+	}
+
+	if dto.Action == "publish" {
+		classMaterial.IsPublished = true
+		now := time.Now()
+		classMaterial.PublishedAt = &now
 	}
 
 	err = u.classMaterialRepo.Create(classMaterial)
@@ -86,4 +93,18 @@ func (u *classMaterialUseCase) GetMaterialByID(id uint) (*dtos.GetClassMaterialD
 	}
 
 	return transform.EntityToGetClassMaterialDtoWithAttachments(material, attachmentDtos), nil
+}
+
+func (u *classMaterialUseCase) GetMaterialsByClassID(classID uint) ([]*dtos.GetThumnailClassMaterialDto, error) {
+	materials, err := u.classMaterialRepo.GetByClassID(classID)
+	if err != nil {
+		return nil, err
+	}
+
+	response := make([]*dtos.GetThumnailClassMaterialDto, 0, len(materials))
+	for _, material := range materials {
+		response = append(response, transform.EntityToGetThumnailClassMaterialDto(material))
+	}
+
+	return response, nil
 }

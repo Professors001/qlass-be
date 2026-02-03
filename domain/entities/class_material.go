@@ -16,6 +16,7 @@ type ClassMaterial struct {
 	DueAt               *time.Time `json:"due_at" gorm:"comment:Null for lectures."`
 	Points              *int       `json:"points" gorm:"default:100;comment:Null for lectures."`
 	IsPublished         bool       `json:"is_published" gorm:"default:false"`
+	PublishedAt         *time.Time `json:"published_at"`
 	AllowLateSubmission bool       `json:"allow_late_submission" gorm:"default:true"`
 	Quiz                *Quiz      `json:"quiz" gorm:"foreignKey:CourseMaterialID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL;"`
 	QuizPin             *string    `json:"quiz_pin" gorm:"type:varchar(20)"`

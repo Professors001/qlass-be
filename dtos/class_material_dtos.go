@@ -15,6 +15,14 @@ type CreateClassMaterialDto struct {
 	Action        string     `json:"action" binding:"required,oneof=draft publish"`
 }
 
+type GetThumnailClassMaterialDto struct {
+	ID        uint       `json:"id"`
+	Title     string     `json:"title"`
+	Type      string     `json:"type"`
+	CreatedAt time.Time  `json:"created_at"`
+	DueAt     *time.Time `json:"due_at"`
+}
+
 type GetClassMaterialDto struct {
 	ID          uint                        `json:"id"`
 	ClassID     uint                        `json:"class_id"`

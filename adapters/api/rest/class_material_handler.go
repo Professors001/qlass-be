@@ -64,3 +64,20 @@ func (h *MaterialHandler) GetMaterialByID(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"data": res})
 }
+
+func (h *MaterialHandler) GetMaterialsByClassID(c *gin.Context) {
+	idStr := c.Param("class_id")
+	classID, err := strconv.ParseUint(idStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, dtos.GlobalErrorResponse{Error: "BAD_REQUEST", Message: "Invalid class ID"})
+		return
+	}
+
+	res, err := h.materialUseCase.GetMaterialsByClassID(uint(classID))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dtos.GlobalErrorResponse{Error: "INTERNAL_ERROR", Message: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": res})
+}
