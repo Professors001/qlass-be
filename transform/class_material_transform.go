@@ -11,7 +11,7 @@ func CreateToEntity(dto *dtos.CreateClassMaterialDto) *entities.ClassMaterial {
 		Description: dto.Description,
 		ClassID:     dto.ClassID,
 		Type:        dto.Type,
-		IsPublished: dto.Action == "publish",
+		IsPublished: dto.Action == "draft",
 		Points:      dto.Points,
 		DueAt:       dto.DueAt,
 	}

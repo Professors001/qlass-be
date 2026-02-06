@@ -39,11 +39,16 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	classMaterialUseCase := usecases.NewClassMaterialUseCase(classMaterialRepo, classRepo, attachmentRepo, attachmentUseCase)
 	classMaterialHandler := rest.NewMaterialHandler(classMaterialUseCase)
 
+	submissionRepo := databases.NewPostgresSubmissionRepository(db)
+	submissionUseCase := usecases.NewSubmissionUseCase(submissionRepo, classMaterialRepo, attachmentRepo, attachmentUseCase)
+	submissionHandler := rest.NewSubmissionHandler(submissionUseCase)
+
 	handler := api.ProvideHandler(
 		userHandler,
 		classHandler,
 		attachmentHandler,
-		classMaterialHandler)
+		classMaterialHandler,
+		submissionHandler)
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "Qlass BE is still running!"})
 	})
@@ -77,4 +82,11 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	materialRouter.POST("", handler.ClassMaterialHandler.CreateMaterial)
 	materialRouter.GET("/:id", handler.ClassMaterialHandler.GetMaterialByID)
 	materialRouter.GET("/class/:class_id", handler.ClassMaterialHandler.GetMaterialsByClassID)
+
+	// Submissions
+	submissionRouter := r.Group("/submissions")
+	submissionRouter.Use(middleware.AuthorizeJWT(jwtService))
+	submissionRouter.POST("", handler.SubmissionHandler.CreateSubmission)
+	submissionRouter.GET("/:id", handler.SubmissionHandler.GetSubmission)
+	submissionRouter.GET("/student-material/:class_material_id", handler.SubmissionHandler.GetSubmissonByMaterialIDAndStudentID)
 }

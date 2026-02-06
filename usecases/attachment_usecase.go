@@ -17,7 +17,7 @@ type AttachmentUseCase interface {
 	UploadAttachment(userID uint, fileHeader *multipart.FileHeader) (*dtos.UploadAttachmentResponseDto, error)
 	GetAttachmentByID(id uint) (*dtos.GetAttachmentResponseDto, error)
 	GetAttachmentsByClassMaterialID(classMaterialID uint) ([]*dtos.GetAttachmentResponseDto, error)
-	GetAttachmentsBySubmissionID(submissionID uint) ([]*entities.Attachment, error)
+	GetAttachmentsBySubmissionID(submissionID uint) ([]*dtos.GetAttachmentResponseDto, error)
 	UpdateAttachment(dto *dtos.UpdateAttachmentDto) error
 	DeleteAttachment(id uint) error
 }
@@ -105,8 +105,23 @@ func (u *attachmentUseCase) GetAttachmentsByClassMaterialID(classMaterialID uint
 	return response, nil
 }
 
-func (u *attachmentUseCase) GetAttachmentsBySubmissionID(submissionID uint) ([]*entities.Attachment, error) {
-	return u.attachmentRepo.GetBySubmissionID(submissionID)
+func (u *attachmentUseCase) GetAttachmentsBySubmissionID(submissionID uint) ([]*dtos.GetAttachmentResponseDto, error) {
+	attachments, err := u.attachmentRepo.GetBySubmissionID(submissionID)
+	if err != nil {
+		return nil, err
+	}
+
+	response := make([]*dtos.GetAttachmentResponseDto, 0, len(attachments))
+
+	for _, att := range attachments {
+		dto, err := u.enrichAttachment(att)
+		if err != nil {
+			continue
+		}
+		response = append(response, dto)
+	}
+
+	return response, nil
 }
 func (u *attachmentUseCase) UpdateAttachment(dto *dtos.UpdateAttachmentDto) error {
 	attachment, err := u.attachmentRepo.GetByID(dto.AttachmentID)

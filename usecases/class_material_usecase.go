@@ -2,7 +2,6 @@ package usecases
 
 import (
 	"errors"
-	"qlass-be/domain/entities"
 	"qlass-be/domain/repositories"
 	"qlass-be/dtos"
 	"qlass-be/transform"
@@ -44,14 +43,7 @@ func (u *classMaterialUseCase) CreateClassMaterial(dto *dtos.CreateClassMaterial
 		return errors.New("only class owner can create class material")
 	}
 
-	classMaterial := &entities.ClassMaterial{
-		Title:       dto.Title,
-		Description: dto.Description,
-		ClassID:     dto.ClassID,
-		Type:        dto.Type,
-		Points:      dto.Points,
-		DueAt:       dto.DueAt,
-	}
+	classMaterial := transform.CreateToEntity(dto)
 
 	if dto.Action == "publish" {
 		classMaterial.IsPublished = true

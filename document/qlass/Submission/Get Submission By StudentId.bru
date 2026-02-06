@@ -1,23 +1,17 @@
 meta {
-  name: Join Class
+  name: Get Submission By StudentId
   type: http
-  seq: 5
+  seq: 2
 }
 
-post {
-  url: {{base_url}}/classes/join
-  body: json
+get {
+  url: {{base_url}}/submissions/5
+  body: none
   auth: bearer
 }
 
 auth:bearer {
   token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozLCJyb2xlIjoic3R1ZGVudCIsImV4cCI6MTc3MDYxNTYwMn0.7IeLqvODMa3ZKbg65WU6eTg9DVl4hYu1Z6ymTUbmFa4
-}
-
-body:json {
-  {
-    "invite_code": "9TCDAF"
-  }
 }
 
 settings {

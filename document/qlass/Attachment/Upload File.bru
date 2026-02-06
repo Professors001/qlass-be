@@ -5,17 +5,17 @@ meta {
 }
 
 post {
-  url: {{base_url}}/attachments
+  url: {{base_url}}/attachments/upload
   body: multipartForm
   auth: bearer
 }
 
 auth:bearer {
-  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoidGVhY2hlciIsImV4cCI6MTc3MDIyMDU5MH0.Mqjr1yCwY5Q1cH6XIXV1ciiDQC1tbZSPV-aFfBlzg7o
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozLCJyb2xlIjoic3R1ZGVudCIsImV4cCI6MTc3MDYxNTYwMn0.7IeLqvODMa3ZKbg65WU6eTg9DVl4hYu1Z6ymTUbmFa4
 }
 
 body:multipart-form {
-  attachment: @file(/Users/bankaphisit/Documents/Playground/IMG_5519.JPG)
+  attachment: @file(/Users/bankaphisit/Downloads/meme-pepe-the-frog-on-the-toilet-sad-desktop-wallpaper-cover.JPG)
 }
 
 settings {
