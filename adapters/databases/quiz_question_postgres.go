@@ -57,8 +57,16 @@ func (r *postgresQuizQuestionRepository) GetWithOptionsByQuizID(quizID uint) ([]
 }
 
 func (r *postgresQuizQuestionRepository) DeleteByQuizID(quizID uint) error {
-	if err := r.db.Where("quiz_id = ?", quizID).Delete(&entities.QuizQuestion{}).Error; err != nil {
-		return err
-	}
-	return nil
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		// Delete options associated with the questions
+		if err := tx.Where("question_id IN (?)", tx.Model(&entities.QuizQuestion{}).Select("id").Where("quiz_id = ?", quizID)).Delete(&entities.QuizOption{}).Error; err != nil {
+			return err
+		}
+
+		// Delete the questions
+		if err := tx.Where("quiz_id = ?", quizID).Delete(&entities.QuizQuestion{}).Error; err != nil {
+			return err
+		}
+		return nil
+	})
 }

@@ -10,6 +10,7 @@ type Handler struct {
 	AttachmentHandler    *rest.AttachmentHandler
 	ClassMaterialHandler *rest.MaterialHandler
 	SubmissionHandler    *rest.SubmissionHandler
+	QuizHandler          *rest.QuizHandler
 }
 
 func ProvideHandler(
@@ -18,6 +19,7 @@ func ProvideHandler(
 	attachmentHandler *rest.AttachmentHandler,
 	classMaterialHandler *rest.MaterialHandler,
 	submissionHandler *rest.SubmissionHandler,
+	quizHandler *rest.QuizHandler,
 ) *Handler {
 	return &Handler{
 		UserHandler:          userHandler,
@@ -25,5 +27,6 @@ func ProvideHandler(
 		AttachmentHandler:    attachmentHandler,
 		ClassMaterialHandler: classMaterialHandler,
 		SubmissionHandler:    submissionHandler,
+		QuizHandler:          quizHandler,
 	}
 }

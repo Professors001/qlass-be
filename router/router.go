@@ -43,12 +43,19 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	submissionUseCase := usecases.NewSubmissionUseCase(submissionRepo, classMaterialRepo, attachmentRepo, attachmentUseCase)
 	submissionHandler := rest.NewSubmissionHandler(submissionUseCase)
 
+	quizRepo := databases.NewPostgresQuizRepository(db)
+	quizQuestionRepo := databases.NewPostgresQuizQuestionRepository(db)
+	quizOptionRepo := databases.NewPostgresQuizOptionRepository(db)
+	quizUseCase := usecases.NewQuizUseCase(quizRepo, quizQuestionRepo, quizOptionRepo, attachmentRepo, attachmentUseCase)
+	quizHandler := rest.NewQuizHandler(quizUseCase)
+
 	handler := api.ProvideHandler(
 		userHandler,
 		classHandler,
 		attachmentHandler,
 		classMaterialHandler,
-		submissionHandler)
+		submissionHandler,
+		quizHandler)
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "Qlass BE is still running!"})
 	})
@@ -89,4 +96,10 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	submissionRouter.POST("", handler.SubmissionHandler.CreateSubmission)
 	submissionRouter.GET("/:id", handler.SubmissionHandler.GetSubmission)
 	submissionRouter.GET("/student-material/:class_material_id", handler.SubmissionHandler.GetSubmissonByMaterialIDAndStudentID)
+
+	// Quizzes
+	quizRouter := r.Group("/quizzes")
+	quizRouter.Use(middleware.AuthorizeJWT(jwtService))
+	quizRouter.POST("", handler.QuizHandler.CreateQuiz)
+	quizRouter.GET("/:id", handler.QuizHandler.GetQuiz)
 }
