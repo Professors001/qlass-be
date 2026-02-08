@@ -15,11 +15,11 @@ func NewPostgresQuizRepository(db *gorm.DB) repositories.QuizRepository {
 	return &postgresQuizRepository{db: db}
 }
 
-func (r *postgresQuizRepository) Create(quiz *entities.Quiz) error {
+func (r *postgresQuizRepository) Create(quiz *entities.Quiz) (uint, error) {
 	if err := r.db.Create(quiz).Error; err != nil {
-		return err
+		return 0, err
 	}
-	return nil
+	return quiz.ID, nil
 }
 
 func (r *postgresQuizRepository) Update(quiz *entities.Quiz) error {
