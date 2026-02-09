@@ -30,17 +30,9 @@ func (r *postgresAttachmentRepository) GetByID(id uint) (*entities.Attachment, e
 	return &attachment, nil
 }
 
-func (r *postgresAttachmentRepository) GetByClassMaterialID(classMaterialID uint) ([]*entities.Attachment, error) {
+func (r *postgresAttachmentRepository) GetByOwnerTypeAndOwnerID(ownerType string, ownerID uint) ([]*entities.Attachment, error) {
 	var attachments []*entities.Attachment
-	if err := r.db.Where("class_material_id = ?", classMaterialID).Find(&attachments).Error; err != nil {
-		return nil, err
-	}
-	return attachments, nil
-}
-
-func (r *postgresAttachmentRepository) GetBySubmissionID(submissionID uint) ([]*entities.Attachment, error) {
-	var attachments []*entities.Attachment
-	if err := r.db.Where("submission_id = ?", submissionID).Find(&attachments).Error; err != nil {
+	if err := r.db.Where("owner_type = ? AND owner_id = ?", ownerType, ownerID).Find(&attachments).Error; err != nil {
 		return nil, err
 	}
 	return attachments, nil

@@ -10,3 +10,7 @@ func StringToUint(s string) uint {
 	}
 	return id
 }
+
+func Ptr[T any](v T) *T {
+	return &v
+}

@@ -1,6 +1,7 @@
 package databases
 
 import (
+	"errors"
 	"qlass-be/domain/entities"
 	"qlass-be/domain/repositories"
 
@@ -39,7 +40,15 @@ func (r *postgresSubmissionRepository) GetByID(id uint) (*entities.Submission, e
 
 func (r *postgresSubmissionRepository) GetByClassMaterialIDAndStudentID(classMaterialID uint, studentID uint) (*entities.Submission, error) {
 	var submission entities.Submission
-	if err := r.db.Where("class_material_id = ? AND user_id = ?", classMaterialID, studentID).First(&submission).Error; err != nil {
+
+	// Query the database
+	err := r.db.Debug().Where("class_material_id = ? AND user_id = ?", classMaterialID, studentID).First(&submission).Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+
 		return nil, err
 	}
 	return &submission, nil

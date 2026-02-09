@@ -5,7 +5,7 @@ import (
 	"qlass-be/domain/repositories"
 	"qlass-be/dtos"
 	"qlass-be/transforms"
-	"strings"
+	"qlass-be/utils"
 	"time"
 )
 
@@ -41,21 +41,18 @@ func (u *submissionUseCase) CreateSubmission(dto dtos.CreateSubmissionDto, stude
 		return errors.New("class material not found")
 	}
 
-	// 1. Check for duplicate
-	_, err = u.submissionRepo.GetByClassMaterialIDAndStudentID(classId, studentID)
+	// 1. Get the submission AND the error
+	existingSubmission, err := u.submissionRepo.GetByClassMaterialIDAndStudentID(classId, studentID)
 
-	// 2. Handle the error logic properly
-	if err == nil {
-		// If err is NIL, it means a record WAS found -> Duplicate!
+	// 2. First, check for actual database crashes (Connection failed, SQL error)
+	if err != nil {
+		return err
+	}
+
+	// 3. Then, check if we actually FOUND data
+	// If existingSubmission is NOT nil, THAT is a duplicate.
+	if existingSubmission != nil {
 		return errors.New("submission already exists")
-	} else {
-		// If there IS an error, we check if it's strictly "Record Not Found"
-		// Note: You might need to use `gorm.ErrRecordNotFound` or your repo's specific error constant
-		if err.Error() != "record not found" && !strings.Contains(err.Error(), "record not found") {
-			// It's a real database error (e.g., connection died), so return it
-			return err
-		}
-		// If the error IS "record not found", we do nothing and proceed!
 	}
 
 	// 3. Fix the Potential Crash (Panic) here
@@ -78,7 +75,8 @@ func (u *submissionUseCase) CreateSubmission(dto dtos.CreateSubmissionDto, stude
 			return err
 		}
 
-		attachment.SubmissionID = &submission.ID
+		attachment.OwnerType = utils.Ptr("submission")
+		attachment.OwnerID = &submission.ID
 
 		err = u.attachmentRepo.Update(attachment)
 		if err != nil {
@@ -96,7 +94,7 @@ func (u *submissionUseCase) GetSubmissionByID(id uint) (*dtos.GetSubmissionRespo
 		return nil, err
 	}
 
-	attachments, err := u.attachmentUseCase.GetAttachmentsBySubmissionID(val.ID)
+	attachments, err := u.attachmentUseCase.GetAttachmentsByOwner("submission", val.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -106,11 +104,16 @@ func (u *submissionUseCase) GetSubmissionByID(id uint) (*dtos.GetSubmissionRespo
 
 func (u *submissionUseCase) GetSubmissonByMaterialIDAndStudentID(classMaterialID uint, studentID uint) (*dtos.GetSubmissionResponseDto, error) {
 	val, err := u.submissionRepo.GetByClassMaterialIDAndStudentID(classMaterialID, studentID)
+
 	if err != nil {
 		return nil, err
 	}
 
-	attachments, err := u.attachmentUseCase.GetAttachmentsBySubmissionID(val.ID)
+	if val == nil {
+		return nil, nil
+	}
+
+	attachments, err := u.attachmentUseCase.GetAttachmentsByOwner("submission", val.ID)
 	if err != nil {
 		return nil, err
 	}

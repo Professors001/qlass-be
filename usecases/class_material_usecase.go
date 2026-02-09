@@ -5,6 +5,7 @@ import (
 	"qlass-be/domain/repositories"
 	"qlass-be/dtos"
 	"qlass-be/transforms"
+	"qlass-be/utils"
 	"time"
 )
 
@@ -62,7 +63,8 @@ func (u *classMaterialUseCase) CreateClassMaterial(dto *dtos.CreateClassMaterial
 			return err
 		}
 
-		attachment.ClassMaterialID = &classMaterial.ID
+		attachment.OwnerType = utils.Ptr("class_material")
+		attachment.OwnerID = &classMaterial.ID
 
 		err = u.attachmentRepo.Update(attachment)
 		if err != nil {
@@ -79,7 +81,7 @@ func (u *classMaterialUseCase) GetMaterialByID(id uint) (*dtos.GetClassMaterialD
 		return nil, err
 	}
 
-	attachmentDtos, err := u.attachmentUseCase.GetAttachmentsByClassMaterialID(material.ID)
+	attachmentDtos, err := u.attachmentUseCase.GetAttachmentsByOwner("class_material", material.ID)
 	if err != nil {
 		return nil, err
 	}

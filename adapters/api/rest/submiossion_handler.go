@@ -73,7 +73,7 @@ func (h *SubmissionHandler) GetSubmission(c *gin.Context) {
 }
 
 func (h *SubmissionHandler) GetSubmissonByMaterialIDAndStudentID(c *gin.Context) {
-	submissionId := c.Param("class_material_id")
+	class_material_id := c.Param("class_material_id")
 
 	val, exists := c.Get("currentUser")
 	if !exists {
@@ -87,9 +87,9 @@ func (h *SubmissionHandler) GetSubmissonByMaterialIDAndStudentID(c *gin.Context)
 		return
 	}
 
-	submission, err := h.SubmissionUseCase.GetSubmissonByMaterialIDAndStudentID(utils.StringToUint(submissionId), claims.UserId)
+	submission, err := h.SubmissionUseCase.GetSubmissonByMaterialIDAndStudentID(utils.StringToUint(class_material_id), claims.UserId)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, dtos.GlobalErrorResponse{Error: "INTERNAL_SERVER_ERROR", Message: err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
