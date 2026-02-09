@@ -33,10 +33,13 @@ func EntityToGetClassMaterialDtoWithAttachments(material *entities.ClassMaterial
 
 func EntityToGetThumnailClassMaterialDto(material *entities.ClassMaterial) *dtos.GetThumnailClassMaterialDto {
 	return &dtos.GetThumnailClassMaterialDto{
-		ID:        material.ID,
-		Title:     material.Title,
-		Type:      material.Type,
-		CreatedAt: material.CreatedAt,
-		DueAt:     material.DueAt,
+		ID:          material.ID,
+		ClassID:     material.ClassID,
+		Type:        material.Type,
+		Title:       material.Title,
+		PublishedAt: material.PublishedAt,
+		CreatedAt:   material.CreatedAt,
+		Points:      material.Points,
+		DueAt:       material.DueAt,
 	}
 }

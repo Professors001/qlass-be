@@ -16,11 +16,14 @@ type CreateClassMaterialDto struct {
 }
 
 type GetThumnailClassMaterialDto struct {
-	ID        uint       `json:"id"`
-	Title     string     `json:"title"`
-	Type      string     `json:"type"`
-	CreatedAt time.Time  `json:"created_at"`
-	DueAt     *time.Time `json:"due_at"`
+	ID          uint       `json:"id"`
+	ClassID     uint       `json:"class_id"`
+	Type        string     `json:"type"`
+	Title       string     `json:"title"`
+	PublishedAt *time.Time `json:"published_at"`
+	CreatedAt   time.Time  `json:"created_at"`
+	Points      *int       `json:"points"`
+	DueAt       *time.Time `json:"due_at"`
 }
 
 type GetClassMaterialDto struct {
