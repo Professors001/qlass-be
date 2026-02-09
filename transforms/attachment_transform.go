@@ -1,4 +1,4 @@
-package transform
+package transforms
 
 import (
 	"qlass-be/domain/entities"

@@ -18,7 +18,6 @@ type ClassMaterial struct {
 	IsPublished         bool       `json:"is_published" gorm:"default:false"`
 	PublishedAt         *time.Time `json:"published_at"`
 	AllowLateSubmission bool       `json:"allow_late_submission" gorm:"default:true"`
-	Quiz                *Quiz      `json:"quiz" gorm:"foreignKey:ClassMaterialID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	QuizPin             *string    `json:"quiz_pin" gorm:"type:varchar(20)"`
 	QuizStatus          string     `json:"quiz_status" gorm:"default:idle;type:varchar(50)"`
 }

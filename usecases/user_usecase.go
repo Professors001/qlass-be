@@ -8,7 +8,7 @@ import (
 	"qlass-be/domain/repositories"
 	"qlass-be/dtos"
 	"qlass-be/middleware"
-	"qlass-be/transform"
+	"qlass-be/transforms"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -58,7 +58,7 @@ func (u *userUseCase) RegisterFirstStep(ctx context.Context, req *dtos.RegisterR
 		return nil, err
 	}
 
-	tempData := transform.RequestToTempRegisterDataDto(req, string(hashedPassword), "123456")
+	tempData := transforms.RequestToTempRegisterDataDto(req, string(hashedPassword), "123456")
 
 	// Store into Redis with Email as key (TTL 5 minutes)
 	err = u.userCacheRepo.SetRegistrationData(ctx, req.Email, tempData, 5*time.Minute)
@@ -87,7 +87,7 @@ func (u *userUseCase) RegisterSecondStep(ctx context.Context, req *dtos.Register
 	}
 
 	// Create user in DB
-	newUser := transform.TempRegisterDataDtoToUserEntity(tempData)
+	newUser := transforms.TempRegisterDataDtoToUserEntity(tempData)
 	err = u.userRepo.Create(newUser)
 	if err != nil {
 		log.Println("Error creating user in DB:", err)

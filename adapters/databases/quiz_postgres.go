@@ -38,11 +38,11 @@ func (r *postgresQuizRepository) GetByID(id uint) (*entities.Quiz, error) {
 	return &quiz, nil
 }
 
-func (r *postgresQuizRepository) GetByClassMaterialID(classMaterialID uint) (*entities.Quiz, error) {
-	var quiz entities.Quiz
+func (r *postgresQuizRepository) GetByUserID(userID uint) ([]entities.Quiz, error) {
+	var quizzes []entities.Quiz
 
-	if err := r.db.Preload("Questions.Options").Where("class_material_id = ?", classMaterialID).First(&quiz).Error; err != nil {
+	if err := r.db.Preload("Questions.Options").Where("user_id = ?", userID).Find(&quizzes).Error; err != nil {
 		return nil, err
 	}
-	return &quiz, nil
+	return quizzes, nil
 }

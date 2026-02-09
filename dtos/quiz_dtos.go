@@ -1,23 +1,25 @@
 package dtos
 
-type CreateQuizDto struct {
-	ClassMaterialID        uint                 `json:"class_material_id" binding:"required"`
-	Title                  string               `json:"title" binding:"required"`
-	Description            string               `json:"description"`
-	DefaultTimePerQuestion int                  `json:"default_time_per_question" binding:"required,min=10"`
-	Questions              []CreateQuizQuestion `json:"questions" binding:"required,dive"`
+type SaveQuizDto struct {
+	Title                  string `json:"title" binding:"required"`
+	Description            string `json:"description"`
+	DefaultTimePerQuestion int    `json:"default_time_per_question" binding:"required,min=10"`
 }
 
-type CreateQuizQuestion struct {
-	QuestionText      string             `json:"question_text" binding:"required"`
-	Options           []CreateQuizOption `json:"options" binding:"required,dive"`
-	MediaAttachmentID *uint              `json:"media_attachment_id"`
-	PointsMultiplier  int                `json:"points_multiplier" binding:"required,min=1"`
-	TimeLimitSeconds  int                `json:"time_limit_seconds" binding:"required,min=10"`
-	OrderIndex        int                `json:"order_index" binding:"required,min=1"`
+type SaveQuizQuestionDtoRequest struct {
+	Questions []SaveQuizQuestionDto `json:"questions" binding:"required,dive"`
 }
 
-type CreateQuizOption struct {
+type SaveQuizQuestionDto struct {
+	QuestionText      string           `json:"question_text" binding:"required"`
+	Options           []SaveQuizOption `json:"options" binding:"required,dive"`
+	MediaAttachmentID *uint            `json:"media_attachment_id"`
+	PointsMultiplier  int              `json:"points_multiplier" binding:"required,min=1"`
+	TimeLimitSeconds  int              `json:"time_limit_seconds" binding:"required,min=10"`
+	OrderIndex        int              `json:"order_index" binding:"required,min=1"`
+}
+
+type SaveQuizOption struct {
 	OptionText string `json:"option_text" binding:"required"`
 	IsCorrect  bool   `json:"is_correct"`
 	OrderIndex int    `json:"order_index" binding:"required,min=1"`
@@ -25,7 +27,7 @@ type CreateQuizOption struct {
 
 type GetQuizResponseDto struct {
 	ID                     uint                      `json:"id"`
-	ClassMaterialID        uint                      `json:"class_material_id"`
+	UserID                 uint                      `json:"user_id"`
 	Title                  string                    `json:"title"`
 	Description            string                    `json:"description"`
 	DefaultTimePerQuestion int                       `json:"default_time_per_question"`

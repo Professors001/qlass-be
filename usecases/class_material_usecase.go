@@ -4,7 +4,7 @@ import (
 	"errors"
 	"qlass-be/domain/repositories"
 	"qlass-be/dtos"
-	"qlass-be/transform"
+	"qlass-be/transforms"
 	"time"
 )
 
@@ -43,7 +43,7 @@ func (u *classMaterialUseCase) CreateClassMaterial(dto *dtos.CreateClassMaterial
 		return errors.New("only class owner can create class material")
 	}
 
-	classMaterial := transform.CreateToEntity(dto)
+	classMaterial := transforms.CreateToEntity(dto)
 
 	if dto.Action == "publish" {
 		classMaterial.IsPublished = true
@@ -84,7 +84,7 @@ func (u *classMaterialUseCase) GetMaterialByID(id uint) (*dtos.GetClassMaterialD
 		return nil, err
 	}
 
-	return transform.EntityToGetClassMaterialDtoWithAttachments(material, attachmentDtos), nil
+	return transforms.EntityToGetClassMaterialDtoWithAttachments(material, attachmentDtos), nil
 }
 
 func (u *classMaterialUseCase) GetMaterialsByClassID(classID uint) ([]*dtos.GetThumnailClassMaterialDto, error) {
@@ -95,7 +95,7 @@ func (u *classMaterialUseCase) GetMaterialsByClassID(classID uint) ([]*dtos.GetT
 
 	response := make([]*dtos.GetThumnailClassMaterialDto, 0, len(materials))
 	for _, material := range materials {
-		response = append(response, transform.EntityToGetThumnailClassMaterialDto(material))
+		response = append(response, transforms.EntityToGetThumnailClassMaterialDto(material))
 	}
 
 	return response, nil

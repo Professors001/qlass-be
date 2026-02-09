@@ -9,7 +9,7 @@ import (
 	"qlass-be/domain/entities"
 	"qlass-be/domain/repositories"
 	"qlass-be/dtos"
-	"qlass-be/transform"
+	"qlass-be/transforms"
 	"time"
 )
 
@@ -67,7 +67,7 @@ func (u *attachmentUseCase) UploadAttachment(userID uint, file *multipart.FileHe
 		return nil, err
 	}
 
-	uploadResponse := transform.ToUploadAttachmentResponseDto(attachment, fileURL)
+	uploadResponse := transforms.ToUploadAttachmentResponseDto(attachment, fileURL)
 
 	return uploadResponse, nil
 }
@@ -88,7 +88,7 @@ func (u *attachmentUseCase) GetAttachmentsByClassMaterialID(classMaterialID uint
 		return nil, err
 	}
 
-	// 2. Transform and enrich each attachment
+	// 2. Transforms and enrich each attachment
 	response := make([]*dtos.GetAttachmentResponseDto, 0, len(attachments))
 
 	for _, att := range attachments {
@@ -163,6 +163,6 @@ func (u *attachmentUseCase) enrichAttachment(attachment *entities.Attachment) (*
 		return nil, err
 	}
 
-	// 3. Transform to DTO
-	return transform.ToGetAttachmentResponseDto(attachment, fileURL), nil
+	// 3. Transforms to DTO
+	return transforms.ToGetAttachmentResponseDto(attachment, fileURL), nil
 }

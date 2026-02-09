@@ -4,7 +4,7 @@ import (
 	"errors"
 	"qlass-be/domain/repositories"
 	"qlass-be/dtos"
-	"qlass-be/transform"
+	"qlass-be/transforms"
 	"strings"
 	"time"
 )
@@ -65,7 +65,7 @@ func (u *submissionUseCase) CreateSubmission(dto dtos.CreateSubmissionDto, stude
 		isLate = time.Now().After(*classMaterial.DueAt)
 	}
 
-	submission := transform.CreateToSubmissionEntity(&dto, studentID, isLate)
+	submission := transforms.CreateToSubmissionEntity(&dto, studentID, isLate)
 
 	err = u.submissionRepo.Create(submission)
 	if err != nil {
@@ -101,7 +101,7 @@ func (u *submissionUseCase) GetSubmissionByID(id uint) (*dtos.GetSubmissionRespo
 		return nil, err
 	}
 
-	return transform.EntityToGetSubmissionResponseDto(val, attachments), nil
+	return transforms.EntityToGetSubmissionResponseDto(val, attachments), nil
 }
 
 func (u *submissionUseCase) GetSubmissonByMaterialIDAndStudentID(classMaterialID uint, studentID uint) (*dtos.GetSubmissionResponseDto, error) {
@@ -115,7 +115,7 @@ func (u *submissionUseCase) GetSubmissonByMaterialIDAndStudentID(classMaterialID
 		return nil, err
 	}
 
-	return transform.EntityToGetSubmissionResponseDto(val, attachments), nil
+	return transforms.EntityToGetSubmissionResponseDto(val, attachments), nil
 }
 
 func (u *submissionUseCase) GetSubmissionsByMaterialID(classMaterialID uint) ([]*dtos.GetSubmissionResponseDto, error) {

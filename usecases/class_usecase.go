@@ -6,7 +6,7 @@ import (
 	"qlass-be/domain/entities"
 	"qlass-be/domain/repositories"
 	"qlass-be/dtos"
-	"qlass-be/transform"
+	"qlass-be/transforms"
 	"qlass-be/utils"
 	"strconv"
 )
@@ -80,7 +80,7 @@ func (c *classUseCase) GetClassDetailsByID(ctx context.Context, classID uint) (*
 		return nil, err
 	}
 
-	classDetailsDto := transform.EntityToClassDetailsDto(*class)
+	classDetailsDto := transforms.EntityToClassDetailsDto(*class)
 
 	return &classDetailsDto, nil
 }
@@ -91,7 +91,7 @@ func (c *classUseCase) GetClassDetailsByInviteCode(ctx context.Context, inviteCo
 		return nil, err
 	}
 
-	classDetailsDto := transform.EntityToClassDetailsDto(*class)
+	classDetailsDto := transforms.EntityToClassDetailsDto(*class)
 
 	return &classDetailsDto, nil
 }
@@ -104,7 +104,7 @@ func (c *classUseCase) GetAllMyClasses(ctx context.Context, userID uint) ([]dtos
 
 	var result []dtos.ClassDetailsDto
 	for _, enrollment := range enrollments {
-		dto := transform.EntityToClassDetailsDto(enrollment.Class)
+		dto := transforms.EntityToClassDetailsDto(enrollment.Class)
 		dto.Role = enrollment.Role
 		result = append(result, dto)
 	}
@@ -143,7 +143,7 @@ func (c *classUseCase) GetEnrolledStudentsByClassID(ctx context.Context, classID
 	var students []dtos.StudentDetailsDto
 
 	for _, enrollment := range enrollments {
-		dto := transform.EntityToStudentDetailsDto(enrollment)
+		dto := transforms.EntityToStudentDetailsDto(enrollment)
 		if enrollment.Role == "teacher" || enrollment.Role == "ta" {
 			teachers = append(teachers, dto)
 		} else {
@@ -180,7 +180,7 @@ func (c *classUseCase) GetClassByID(ctx context.Context, classID uint, userID ui
 		return nil, errors.New("class not found or not enrolled")
 	}
 
-	classDetailsDto := transform.EntityToClassDetailsDto(*class)
+	classDetailsDto := transforms.EntityToClassDetailsDto(*class)
 	classDetailsDto.Role = role
 
 	return &classDetailsDto, nil
