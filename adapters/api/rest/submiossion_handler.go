@@ -73,7 +73,7 @@ func (h *SubmissionHandler) GetSubmission(c *gin.Context) {
 }
 
 func (h *SubmissionHandler) GetSubmissonByMaterialIDAndStudentID(c *gin.Context) {
-	submissionId := c.Param("id")
+	submissionId := c.Param("class_material_id")
 
 	val, exists := c.Get("currentUser")
 	if !exists {
@@ -93,5 +93,5 @@ func (h *SubmissionHandler) GetSubmissonByMaterialIDAndStudentID(c *gin.Context)
 		return
 	}
 
-	c.JSON(http.StatusOK, submission)
+	c.JSON(http.StatusOK, gin.H{"data": submission})
 }

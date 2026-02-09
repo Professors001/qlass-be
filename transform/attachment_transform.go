@@ -7,14 +7,13 @@ import (
 
 func ToGetAttachmentResponseDto(attachment *entities.Attachment, fileURL string) *dtos.GetAttachmentResponseDto {
 	return &dtos.GetAttachmentResponseDto{
-		AttachmentID:    attachment.ID,
+		ID:              attachment.ID,
 		FileURL:         fileURL,
 		Filename:        attachment.Filename,
 		FileSize:        attachment.FileSize,
 		FileType:        attachment.FileType,
 		UploaderID:      attachment.UploaderID,
 		UploaderName:    attachment.Uploader.FirstName + " " + attachment.Uploader.LastName,
-		UploaderRole:    attachment.Uploader.Role,
 		ClassMaterialID: attachment.ClassMaterialID,
 		SubmissionID:    attachment.SubmissionID,
 		UploadedAt:      attachment.CreatedAt.Format("2006-01-02 15:04:05"),
