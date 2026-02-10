@@ -102,6 +102,6 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	quizRouter.Use(middleware.AuthorizeJWT(jwtService))
 	quizRouter.POST("", handler.QuizHandler.CreateQuiz)
 	quizRouter.PUT("/:id", handler.QuizHandler.UpdateQuiz)
-	quizRouter.POST("/questions", handler.QuizHandler.SaveQuizQuestion)
+	quizRouter.POST("/:id/questions", handler.QuizHandler.SaveQuizQuestion)
 	quizRouter.GET("/:id", handler.QuizHandler.GetQuiz)
 }

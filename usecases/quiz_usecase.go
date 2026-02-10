@@ -4,12 +4,13 @@ import (
 	"qlass-be/domain/repositories"
 	"qlass-be/dtos"
 	"qlass-be/transforms"
+	"qlass-be/utils"
 )
 
 type QuizUseCase interface {
 	CreateQuiz(dto dtos.SaveQuizDto, userID uint) (uint, error)
 	UpdateQuiz(dto dtos.SaveQuizDto, quizID uint) error
-	SaveQuizQuestion(dto []dtos.SaveQuizQuestionDto, quizID uint) error
+	SaveQuizQuestion(dto dtos.SaveQuizQuestionDtoRequest, quizID uint) error
 	GetQuizByID(id uint) (*dtos.GetQuizResponseDto, error)
 }
 
@@ -56,7 +57,7 @@ func (u *QuizUsecase) UpdateQuiz(dto dtos.SaveQuizDto, quizID uint) error {
 	return nil
 }
 
-func (u *QuizUsecase) SaveQuizQuestion(dto []dtos.SaveQuizQuestionDto, quizID uint) error {
+func (u *QuizUsecase) SaveQuizQuestion(dto dtos.SaveQuizQuestionDtoRequest, quizID uint) error {
 	// Check is these exits?
 	questions, err := u.quizQuestionRepo.GetByQuizID(quizID)
 	if err != nil {
@@ -71,36 +72,40 @@ func (u *QuizUsecase) SaveQuizQuestion(dto []dtos.SaveQuizQuestionDto, quizID ui
 	}
 
 	// Creata a question
-	// for _, question := range dto {
-	// 	questionEntity := transforms.SaveQuizQuestionDtoToQuizQuestionEntity(question, quizID)
+	for _, question := range dto.Questions {
+		questionEntity := transforms.SaveQuizQuestionDtoToQuizQuestionEntity(question, quizID)
 
-	// 	questionID, err := u.quizQuestionRepo.Create(questionEntity)
-	// 	if err != nil {
-	// 		return err
-	// 	}
+		questionID, err := u.quizQuestionRepo.Create(questionEntity)
+		if err != nil {
+			return err
+		}
 
-	// 	attachment, err := u.attachmentRepo.GetByID(*question.MediaAttachmentID)
-	// 	if err != nil {
-	// 		return err
-	// 	}
+		attachmentID := question.MediaAttachmentID
+		if attachmentID != nil {
+			attachment, err := u.attachmentRepo.GetByID(*attachmentID)
+			if err != nil {
+				return err
+			}
 
-	// 	attachment.QuizQuestionID = &questionID
+			attachment.OwnerType = utils.Ptr("quiz_question")
+			attachment.OwnerID = &questionID
 
-	// 	err = u.attachmentRepo.Update(attachment)
-	// 	if err != nil {
-	// 		return err
-	// 	}
+			err = u.attachmentRepo.Update(attachment)
+			if err != nil {
+				return err
+			}
+		}
 
-	// 	// Create Options
-	// 	for _, option := range question.Options {
-	// 		optionEntity := transforms.SaveQuizOptionDtoToQuizOptionEntity(option, questionID)
+		// Create Options
+		for _, option := range question.Options {
+			optionEntity := transforms.SaveQuizOptionDtoToQuizOptionEntity(option, questionID)
 
-	// 		_, err := u.quizOptionRepo.Create(optionEntity)
-	// 		if err != nil {
-	// 			return err
-	// 		}
-	// 	}
-	// }
+			_, err := u.quizOptionRepo.Create(optionEntity)
+			if err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
@@ -110,45 +115,44 @@ func (u *QuizUsecase) GetQuizByID(id uint) (*dtos.GetQuizResponseDto, error) {
 		return nil, err
 	}
 
-	// questions, err := u.quizQuestionRepo.GetWithOptionsByQuizID(quiz.ID)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	questions, err := u.quizQuestionRepo.GetWithOptionsByQuizID(quiz.ID)
+	if err != nil {
+		return nil, err
+	}
 
 	var questionDtos []dtos.GetQuizQuestionResponse
-	// for _, question := range questions {
-	// 	var attachmentDto *dtos.GetAttachmentResponseDto
-	// 	if question.MediaAttachmentID != nil {
-	// 		attachment, err := u.attachmentRepo.GetByID(*question.MediaAttachmentID)
-	// 		if err != nil {
-	// 			return nil, err
-	// 		}
-	// 		attachmentDto, err = u.attachmentUseCase.GetAttachmentByID(attachment.ID)
-	// 		if err != nil {
-	// 			return nil, err
-	// 		}
-	// 	}
+	for _, question := range questions {
+		var attachmentDto *dtos.GetAttachmentResponseDto
 
-	// 	var optionDtos []dtos.GetQuizOptionResponse
-	// 	for _, option := range question.Options {
-	// 		optionDtos = append(optionDtos, dtos.GetQuizOptionResponse{
-	// 			ID:         option.ID,
-	// 			OptionText: option.OptionText,
-	// 			IsCorrect:  option.IsCorrect,
-	// 			OrderIndex: option.OrderIndex,
-	// 		})
-	// 	}
+		attachments, err := u.attachmentUseCase.GetAttachmentsByOwner("quiz_question", question.ID)
+		if err != nil {
+			return nil, err
+		}
 
-	// 	questionDtos = append(questionDtos, dtos.GetQuizQuestionResponse{
-	// 		ID:               question.ID,
-	// 		QuestionText:     question.QuestionText,
-	// 		MediaAttachment:  attachmentDto,
-	// 		PointsMultiplier: question.PointsMultiplier,
-	// 		TimeLimitSeconds: question.TimeLimitSeconds,
-	// 		OrderIndex:       question.OrderIndex,
-	// 		Options:          optionDtos,
-	// 	})
-	// }
+		if len(attachments) > 0 {
+			attachmentDto = attachments[0]
+		}
+
+		var optionDtos []dtos.GetQuizOptionResponse
+		for _, option := range question.Options {
+			optionDtos = append(optionDtos, dtos.GetQuizOptionResponse{
+				ID:         option.ID,
+				OptionText: option.OptionText,
+				IsCorrect:  option.IsCorrect,
+				OrderIndex: option.OrderIndex,
+			})
+		}
+
+		questionDtos = append(questionDtos, dtos.GetQuizQuestionResponse{
+			ID:               question.ID,
+			QuestionText:     question.QuestionText,
+			MediaAttachment:  attachmentDto,
+			PointsMultiplier: question.PointsMultiplier,
+			TimeLimitSeconds: question.TimeLimitSeconds,
+			OrderIndex:       question.OrderIndex,
+			Options:          optionDtos,
+		})
+	}
 
 	quizDto := &dtos.GetQuizResponseDto{
 		ID:                     quiz.ID,

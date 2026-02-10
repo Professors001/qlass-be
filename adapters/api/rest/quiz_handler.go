@@ -122,13 +122,21 @@ func (h *QuizHandler) SaveQuizQuestion(c *gin.Context) {
 		return
 	}
 
+	quiz_id := utils.StringToUint(c.Param("id"))
+
+	_, err := h.UseCase.GetQuizByID(quiz_id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, dtos.GlobalErrorResponse{Error: "NOT_FOUND", Message: err.Error()})
+		return
+	}
+
 	var req dtos.SaveQuizQuestionDtoRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, dtos.GlobalErrorResponse{Error: "BAD_REQUEST", Message: err.Error()})
 		return
 	}
 
-	err := h.UseCase.SaveQuizQuestion(req.Questions, claims.UserId)
+	err = h.UseCase.SaveQuizQuestion(req, quiz_id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, dtos.GlobalErrorResponse{Error: "INTERNAL_ERROR", Message: err.Error()})
 		return

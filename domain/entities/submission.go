@@ -14,4 +14,5 @@ type Submission struct {
 	Score           *int          `json:"score" gorm:"comment:e.g. 85/100"`
 	TeacherFeedback string        `json:"teacher_feedback" gorm:"type:text"`
 	Status          string        `json:"status" gorm:"default:submitted;type:varchar(50);comment:submitted, graded, returned, late, draft"`
+	Attachments     []Attachment  `json:"attachments" gorm:"polymorphic:Owner;"`
 }
