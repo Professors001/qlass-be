@@ -1,0 +1,26 @@
+meta {
+  name: Join Class
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{base_url}}/classes/join
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozLCJyb2xlIjoic3R1ZGVudCIsImV4cCI6MTc3MDYxNTYwMn0.7IeLqvODMa3ZKbg65WU6eTg9DVl4hYu1Z6ymTUbmFa4
+}
+
+body:json {
+  {
+    "invite_code": "9TCDAF"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

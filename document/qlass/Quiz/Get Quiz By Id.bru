@@ -1,0 +1,20 @@
+meta {
+  name: Get Quiz By Id
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/quizzes/1
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoidGVhY2hlciIsImV4cCI6MTc3MDgxNzI3M30.b-RyAFXdbbnmFq44BDx4hlIbwRnByoxYkRDMbiQgT-A
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

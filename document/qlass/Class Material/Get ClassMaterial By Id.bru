@@ -1,0 +1,20 @@
+meta {
+  name: Get ClassMaterial By Id
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{base_url}}/materials/1
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoidGVhY2hlciIsImV4cCI6MTc3MDM1ODU0OX0.MkP7qEGrE3wHl122Ao9YAKQ4Mu5_ZF5AjTgm9YXucHc
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

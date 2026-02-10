@@ -1,0 +1,27 @@
+meta {
+  name: Request Step 1
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/auth/register-step-one
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "university_id": "5410942856",
+    "email": "user_a3@gmail.com",
+    "password": "123456",
+    "first_name": "Charles",
+    "last_name": "Smith",
+    "role": "student"
+  }  
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

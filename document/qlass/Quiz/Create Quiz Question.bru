@@ -1,0 +1,64 @@
+meta {
+  name: Create Quiz Question
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/quizzes/1/questions
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoidGVhY2hlciIsImV4cCI6MTc3MDk3MTY4N30.sWHhaemxn3cLt9tnUYuCk0tNecpZE_bRtWOkR4WDixE
+}
+
+body:json {
+  {
+    "questions": [
+      {
+        "question_text": "What is the capital of France?",
+        "options": [
+          {
+            "option_text": "Paris",
+            "is_correct": true,
+            "order_index": 1
+          },
+          {
+            "option_text": "London",
+            "is_correct": false,
+            "order_index": 2
+          }
+        ],
+        "points_multiplier": 1,
+        "time_limit_seconds": 30,
+        "order_index": 1
+      },
+      {
+        "question_text": "Which planet is known as the Red Planet?",
+        "options": [
+          {
+            "option_text": "Mars",
+            "is_correct": true,
+            "order_index": 1
+          },
+          {
+            "option_text": "Jupiter",
+            "is_correct": false,
+            "order_index": 2
+          }
+        ],
+        "media_attachment_id": 7,
+        "points_multiplier": 2,
+        "time_limit_seconds": 15,
+        "order_index": 2
+      }
+    ]
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

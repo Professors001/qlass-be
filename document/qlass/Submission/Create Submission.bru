@@ -1,0 +1,29 @@
+meta {
+  name: Create Submission
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/submissions
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoidGVhY2hlciIsImV4cCI6MTc3MDk3MTY4N30.sWHhaemxn3cLt9tnUYuCk0tNecpZE_bRtWOkR4WDixE
+}
+
+body:json {
+  {
+    "class_material_id": 2,
+    "student_comment": "Test Send SubWithout Attachment",
+  //   "attachment_ids": [8, 9],
+    "action": "SUBMIT"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -1,0 +1,20 @@
+meta {
+  name: Get All Enrolled User Data
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{base_url}}/classes/1/students
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo3LCJyb2xlIjoic3R1ZGVudCIsImV4cCI6MTc2ODkzMTAyMn0.7W9NSp19OS0oPy0RMKO4lBqLOw6SO-FSCgLLvmKykMo
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

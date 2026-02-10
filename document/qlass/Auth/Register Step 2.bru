@@ -1,0 +1,23 @@
+meta {
+  name: Register Step 2
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{base_url}}/auth/register-step-two
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "email": "user_a3@gmail.com",
+    "otp": "123456"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -1,0 +1,20 @@
+meta {
+  name: TEST JWT BE
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{base_url}}/auth/me
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo0LCJyb2xlIjoic3R1ZGVudCIsImV4cCI6MTc3MDkxODIwOX0.VNXxEWdsvCmB1c-GYhRPKFdxxOnD2A4KFrf8heiN9LU
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

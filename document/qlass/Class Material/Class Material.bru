@@ -1,0 +1,33 @@
+meta {
+  name: Class Material
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{base_url}}/materials
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoidGVhY2hlciIsImV4cCI6MTc3MDgxNzI3M30.b-RyAFXdbbnmFq44BDx4hlIbwRnByoxYkRDMbiQgT-A
+}
+
+body:json {
+  {
+    "class_id": 1,
+    "type": "quiz",
+    "title": "Quiz ครั้งที่ 1",
+    "description": "แบบฝึก่อนเรียน",
+    "attachment_ids": [],
+    "points": 100,
+    "due_at": "2026-02-10T23:59:59Z",
+    "action": "publish"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
