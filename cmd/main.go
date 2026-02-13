@@ -46,10 +46,18 @@ func main() {
 
 	// Migration
 	if err := db.AutoMigrate(
-		&entities.User{}, &entities.Class{}, &entities.ClassEnrollment{},
-		&entities.ClassMaterial{}, &entities.Attachment{},
-		&entities.Quiz{}, &entities.QuizQuestion{}, &entities.QuizOption{},
-		&entities.QuizGameLog{}, &entities.Submission{}); err != nil {
+		&entities.User{},
+		&entities.Class{},
+		&entities.ClassEnrollment{},
+		&entities.ClassMaterial{},
+		&entities.Attachment{},
+		&entities.Quiz{},
+		&entities.QuizQuestion{},
+		&entities.QuizOption{},
+		&entities.QuizGameLog{},
+		&entities.Submission{},
+		&entities.QuizStudentResponse{},
+	); err != nil {
 		log.Fatalf("❌ Migration failed: %v", err)
 	}
 
@@ -57,16 +65,15 @@ func main() {
 	r := gin.Default()
 
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:3000"}, // อนุญาต Next.js ของคุณ
+		AllowOrigins:     []string{"http://localhost:3000"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true, // สำคัญมากถ้าจะใช้ Cookies/Auth.js
+		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
 
-	// Init Routers
-	router.SetUpRouters(r, cfg, db, cacheHelper, jwtService, storageService) //, attachmentRepo
+	router.SetUpRouters(r, cfg, db, cacheHelper, jwtService, storageService)
 
 	serverAddr := fmt.Sprintf("%s", cfg.AppPort)
 	log.Printf("🚀 Server running on port %s", serverAddr)
