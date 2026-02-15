@@ -1,0 +1,24 @@
+meta {
+  name: test WS
+  type: ws
+  seq: 1
+}
+
+ws {
+  url: ws://localhost:8080/ws
+  body: ws
+  auth: none
+}
+
+body:ws {
+  name: message 1
+  type: json
+  content: '''
+    {}
+  '''
+}
+
+settings {
+  encodeUrl: false
+  timeout: 0
+}

@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"qlass-be/adapters/api"
 	"qlass-be/adapters/api/rest"
+	"qlass-be/adapters/api/websocket"
 	"qlass-be/adapters/cache"
 	"qlass-be/adapters/databases"
 	"qlass-be/adapters/storage"
@@ -104,4 +105,9 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	quizRouter.PUT("/:id", handler.QuizHandler.UpdateQuiz)
 	quizRouter.POST("/:id/questions", handler.QuizHandler.SaveQuizQuestion)
 	quizRouter.GET("/:id", handler.QuizHandler.GetQuiz)
+
+	manager := websocket.NewManager()
+	r.GET("/ws", func(c *gin.Context) {
+		manager.ServeWS(c.Writer, c.Request)
+	})
 }
