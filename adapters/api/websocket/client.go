@@ -22,13 +22,19 @@ type Client struct {
 
 	// Egress is used to avoid concurrent writes on the web socket connection
 	egress chan Event
+
+	// Add User details so we know who this connection belongs to
+	UserID uint
+	Role   string
 }
 
-func NewClient(conn *websocket.Conn, manager *Manager) *Client {
+func NewClient(conn *websocket.Conn, manager *Manager, userID uint, role string) *Client {
 	return &Client{
 		connection: conn,
 		manager:    manager,
 		egress:     make(chan Event),
+		UserID:     userID,
+		Role:       role,
 	}
 }
 

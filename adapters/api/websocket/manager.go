@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"qlass-be/middleware"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -59,8 +60,8 @@ func (m *Manager) setEventHandler(eventType string, handler EventHandler) {
 	m.handlers[eventType] = handler
 }
 
-func (m *Manager) ServeWS(w http.ResponseWriter, r *http.Request) {
-	log.Println("New Conection")
+func (m *Manager) ServeWS(w http.ResponseWriter, r *http.Request, claims *middleware.JWTCustomClaims) {
+	log.Printf("New WS Connection Attempt by UserID: %d", claims.UserId)
 
 	conn, err := websocketUpgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -68,7 +69,8 @@ func (m *Manager) ServeWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	client := NewClient(conn, m)
+	// Pass UserID and Role to the new client
+	client := NewClient(conn, m, claims.UserId, claims.Role)
 
 	m.addClient(client)
 }
