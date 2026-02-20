@@ -55,7 +55,10 @@ func (m *Manager) routeEvent(event Event, c *Client) error {
 }
 
 func SendMessage(event Event, c *Client) error {
-	fmt.Println(event)
+	if c.GamePIN == "" {
+		return errors.New("client is not in a room")
+	}
+	c.manager.Broadcast(c.GamePIN, event)
 	return nil
 }
 
@@ -161,6 +164,21 @@ func (m *Manager) AddToRoom(pin string, client *Client) {
 
 	// 4. Add to room
 	m.rooms[pin][client] = true
+}
+
+func (m *Manager) Broadcast(pin string, event Event) {
+	m.RLock()
+	defer m.RUnlock()
+
+	if clients, ok := m.rooms[pin]; ok {
+		for client := range clients {
+			select {
+			case client.egress <- event:
+			default:
+				log.Println("egress channel full, dropping message")
+			}
+		}
+	}
 }
 
 func checkOrigin(r *http.Request) bool {

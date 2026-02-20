@@ -33,7 +33,7 @@ func NewClient(conn *websocket.Conn, manager *Manager, userID uint, role string,
 	return &Client{
 		connection: conn,
 		manager:    manager,
-		egress:     make(chan Event),
+		egress:     make(chan Event, 100),
 		UserID:     userID,
 		Role:       role,
 		GamePIN:    pin,

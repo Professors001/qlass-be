@@ -1,0 +1,29 @@
+meta {
+  name: test WS 3
+  type: ws
+  seq: 3
+}
+
+ws {
+  url: ws://localhost:8080/ws?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoidGVhY2hlciIsImV4cCI6MTc3MTg2NDcyM30.evQWhQnMhvqSGi5tuWU1Juj1ckZ7nDI-vysWXfnwoWU&pin=111111
+  body: ws
+  auth: none
+}
+
+body:ws {
+  name: message 1
+  type: json
+  content: '''
+    {
+      "type": "send_message",
+      "payload": {
+        "message": "Hi_3"
+      }
+    }
+  '''
+}
+
+settings {
+  encodeUrl: false
+  timeout: 0
+}
