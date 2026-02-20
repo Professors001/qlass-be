@@ -1,25 +1,17 @@
 meta {
-  name: Create Quiz
+  name: Get Quizzes By User Token
   type: http
-  seq: 1
+  seq: 4
 }
 
-post {
-  url: {{base_url}}/quizzes
-  body: json
+get {
+  url: {{base_url}}/quizzes/user
+  body: none
   auth: bearer
 }
 
 auth:bearer {
   token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoidGVhY2hlciIsImV4cCI6MTc3MTg3MjM2OX0.lzioyaFhI0MMfWic0uZs1GlpLbJLbjIxhwd9leEALiI
-}
-
-body:json {
-  {
-    "title": "General Science Midterm",
-    "description": "A comprehensive test covering biology and physics basics.",
-    "default_time_per_question": 30
-  }
 }
 
 settings {

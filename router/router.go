@@ -105,6 +105,9 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	quizRouter.PUT("/:id", handler.QuizHandler.UpdateQuiz)
 	quizRouter.POST("/:id/questions", handler.QuizHandler.SaveQuizQuestion)
 	quizRouter.GET("/:id", handler.QuizHandler.GetQuiz)
+	quizRouter.GET("/user", handler.QuizHandler.GetQuizzesByUserID)
+
+	// Websocket
 
 	manager := websocket.NewManager()
 	r.GET("/ws", func(c *gin.Context) {

@@ -154,5 +154,45 @@ func (h *QuizHandler) GetQuiz(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, res)
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Retrieved successfully",
+		"data":    res,
+	})
+}
+
+func (h *QuizHandler) GetQuizzesByUserID(c *gin.Context) {
+	val, exists := c.Get("currentUser")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, dtos.GlobalErrorResponse{Error: "UNAUTHORIZED", Message: "User context not found"})
+		return
+	}
+
+	claims, ok := val.(*middleware.JWTCustomClaims)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, dtos.GlobalErrorResponse{
+			Error:   "INTERNAL_ERROR",
+			Message: "Failed to cast user context",
+		})
+		return
+	}
+
+	if claims.Role != "teacher" {
+		c.JSON(http.StatusForbidden, dtos.GlobalErrorResponse{
+			Error:   "FORBIDDEN",
+			Message: "Only teachers can create classes",
+		})
+		return
+	}
+
+	res, err := h.UseCase.GetQuizzesByUserID(claims.UserId)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dtos.GlobalErrorResponse{Error: "INTERNAL_ERROR", Message: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Retrieved successfully",
+		"data":    res,
+	})
 }

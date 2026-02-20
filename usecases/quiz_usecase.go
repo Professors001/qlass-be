@@ -12,6 +12,7 @@ type QuizUseCase interface {
 	UpdateQuiz(dto dtos.SaveQuizDto, quizID uint) error
 	SaveQuizQuestion(dto dtos.SaveQuizQuestionDtoRequest, quizID uint) error
 	GetQuizByID(id uint) (*dtos.GetQuizResponseDto, error)
+	GetQuizzesByUserID(userID uint) ([]*dtos.GetQuizResponseDto, error)
 }
 
 type QuizUsecase struct {
@@ -164,4 +165,24 @@ func (u *QuizUsecase) GetQuizByID(id uint) (*dtos.GetQuizResponseDto, error) {
 	}
 
 	return quizDto, nil
+}
+
+func (u *QuizUsecase) GetQuizzesByUserID(userID uint) ([]*dtos.GetQuizResponseDto, error) {
+
+	quizzes, err := u.quizRepo.GetByUserID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	var quizDtos []*dtos.GetQuizResponseDto
+	for _, quiz := range quizzes {
+		quizDto, err := u.GetQuizByID(quiz.ID)
+		if err != nil {
+			return nil, err
+		}
+		quizDtos = append(quizDtos, quizDto)
+	}
+
+	return quizDtos, nil
+
 }
