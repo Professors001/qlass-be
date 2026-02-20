@@ -66,6 +66,19 @@ func (u *QuizUsecase) SaveQuizQuestion(dto dtos.SaveQuizQuestionDtoRequest, quiz
 	}
 
 	if len(questions) > 0 {
+		for _, q := range questions {
+			attachments, err := u.attachmentRepo.GetByOwnerTypeAndOwnerID("quiz_question", q.ID)
+			if err == nil {
+				for _, att := range attachments {
+					att.OwnerID = nil
+					att.OwnerType = nil
+					if err := u.attachmentRepo.Update(att); err != nil {
+						return err
+					}
+				}
+			}
+		}
+
 		err = u.quizQuestionRepo.DeleteByQuizID(quizID)
 		if err != nil {
 			return err
