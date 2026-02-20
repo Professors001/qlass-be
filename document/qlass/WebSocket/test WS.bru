@@ -12,8 +12,14 @@ ws {
 
 body:ws {
   name: message 1
+  type: json
   content: '''
-    hi from 1
+    {
+      "type": "send_message",
+      "payload": {
+        "message": "Hi"
+      }
+    }
   '''
 }
 
