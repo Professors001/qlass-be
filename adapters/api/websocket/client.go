@@ -24,17 +24,19 @@ type Client struct {
 	egress chan Event
 
 	// Add User details so we know who this connection belongs to
-	UserID uint
-	Role   string
+	UserID  uint
+	Role    string
+	GamePIN string
 }
 
-func NewClient(conn *websocket.Conn, manager *Manager, userID uint, role string) *Client {
+func NewClient(conn *websocket.Conn, manager *Manager, userID uint, role string, pin string) *Client {
 	return &Client{
 		connection: conn,
 		manager:    manager,
 		egress:     make(chan Event),
 		UserID:     userID,
 		Role:       role,
+		GamePIN:    pin,
 	}
 }
 

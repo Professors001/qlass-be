@@ -108,21 +108,28 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 
 	manager := websocket.NewManager()
 	r.GET("/ws", func(c *gin.Context) {
-		// 1. Extract token from Query Parameter
+		// 1. Get Token
 		tokenString := c.Query("token")
 		if tokenString == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Missing token in query parameter"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Missing token"})
 			return
 		}
 
-		// 2. Validate Token using your existing JWT Service
+		// 2. Get PIN (New)
+		pin := c.Query("pin")
+		if pin == "" {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Missing game pin"})
+			return
+		}
+
+		// 3. Validate Token
 		claims, err := jwtService.ValidateToken(tokenString)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 			return
 		}
 
-		// 3. Pass the valid claims into ServeWS
-		manager.ServeWS(c.Writer, c.Request, claims)
+		// 4. Pass PIN to ServeWS
+		manager.ServeWS(c.Writer, c.Request, claims, pin)
 	})
 }

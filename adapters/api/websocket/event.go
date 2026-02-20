@@ -11,9 +11,14 @@ type EventHandler func(event Event, c *Client) error
 
 const (
 	EventSendMessage = "send_message"
+	EventJoinRoom    = "join_room"
 )
 
 type SendMessagePayload struct {
 	Message string `json:"message"`
 	From    string `json:"from"`
+}
+
+type JoinRoomPayload struct {
+	GamePIN string `json:"game_pin"`
 }

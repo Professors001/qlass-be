@@ -1,6 +1,7 @@
 package websocket
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -20,15 +21,16 @@ var (
 )
 
 type Manager struct {
-	clients ClientList
-	sync.Mutex
-
-	handlers map[string]EventHandler
+	clients      ClientList            // Global list (for metrics/debug)
+	rooms        map[string]ClientList // Key: GamePIN, Value: List of Clients in that room
+	sync.RWMutex                       // Use RWMutex for better concurrency
+	handlers     map[string]EventHandler
 }
 
 func NewManager() *Manager {
 	m := &Manager{
 		clients:  make(ClientList),
+		rooms:    make(map[string]ClientList), // <--- Important!
 		handlers: make(map[string]EventHandler),
 	}
 	m.setEventHandlers()
@@ -37,6 +39,7 @@ func NewManager() *Manager {
 
 func (m *Manager) setEventHandlers() {
 	m.handlers[EventSendMessage] = SendMessage
+	m.handlers[EventJoinRoom] = JoinRoomHandler
 }
 
 func (m *Manager) routeEvent(event Event, c *Client) error {
@@ -56,21 +59,39 @@ func SendMessage(event Event, c *Client) error {
 	return nil
 }
 
+func JoinRoomHandler(event Event, c *Client) error {
+	var payload JoinRoomPayload
+	if err := json.Unmarshal(event.Payload, &payload); err != nil {
+		return fmt.Errorf("invalid payload for join_room: %v", err)
+	}
+
+	if payload.GamePIN == "" {
+		return errors.New("game_pin is required")
+	}
+
+	// 1. (Optional but recommended) Validate PIN with GameUseCase/Redis here
+	// if !gameUseCase.Exists(payload.GamePIN) { return error }
+
+	// 2. Add client to the specific room in Manager
+	c.manager.AddToRoom(payload.GamePIN, c)
+
+	log.Printf("User %d joined room %s", c.UserID, payload.GamePIN)
+	return nil
+}
+
 func (m *Manager) setEventHandler(eventType string, handler EventHandler) {
 	m.handlers[eventType] = handler
 }
 
-func (m *Manager) ServeWS(w http.ResponseWriter, r *http.Request, claims *middleware.JWTCustomClaims) {
-	log.Printf("New WS Connection Attempt by UserID: %d", claims.UserId)
-
+func (m *Manager) ServeWS(w http.ResponseWriter, r *http.Request, claims *middleware.JWTCustomClaims, pin string) {
 	conn, err := websocketUpgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
-	// Pass UserID and Role to the new client
-	client := NewClient(conn, m, claims.UserId, claims.Role)
+	// Create client with the PIN
+	client := NewClient(conn, m, claims.UserId, claims.Role, pin)
 
 	m.addClient(client)
 }
@@ -79,21 +100,67 @@ func (m *Manager) addClient(client *Client) {
 	m.Lock()
 	defer m.Unlock()
 
+	// Add to global list
 	m.clients[client] = true
 
-	// Start reading messages from the client
+	// Add to specific Room (GamePIN)
+	if client.GamePIN != "" {
+		// Create room map if it doesn't exist yet
+		if _, ok := m.rooms[client.GamePIN]; !ok {
+			m.rooms[client.GamePIN] = make(ClientList)
+		}
+		m.rooms[client.GamePIN][client] = true
+	}
+
+	// Start threads
 	go client.readMessage()
 	go client.writeMessage()
 }
 
+// Update removeClient to clean up the room as well
 func (m *Manager) removeClient(client *Client) {
 	m.Lock()
 	defer m.Unlock()
 
+	// Remove from global
 	if _, ok := m.clients[client]; ok {
 		client.connection.Close()
 		delete(m.clients, client)
 	}
+
+	// Remove from Room
+	if client.GamePIN != "" {
+		if room, ok := m.rooms[client.GamePIN]; ok {
+			delete(room, client)
+
+			// Optional: Delete the room if it's empty to save memory
+			if len(room) == 0 {
+				delete(m.rooms, client.GamePIN)
+			}
+		}
+	}
+}
+
+// Add a client to a specific room
+func (m *Manager) AddToRoom(pin string, client *Client) {
+	m.Lock()
+	defer m.Unlock()
+
+	// 1. If client was in another room, remove them first (optional logic)
+	if client.GamePIN != "" && client.GamePIN != pin {
+		// Logic to remove from old room could go here
+	}
+
+	// 2. Assign PIN to client
+	client.GamePIN = pin
+
+	// 3. Create room if it doesn't exist
+	if _, ok := m.rooms[pin]; !ok {
+		m.rooms[pin] = make(ClientList)
+	}
+
+	// 4. Add to room
+	m.rooms[pin][client] = true
 }
 
 func checkOrigin(r *http.Request) bool {
