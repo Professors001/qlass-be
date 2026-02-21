@@ -14,6 +14,8 @@ import (
 
 type GameUseCase interface {
 	StartGameSession(ctx context.Context, teacherID uint, dto dtos.CreateGameRequestDto) (*dtos.CreateGameResponseDto, error)
+	JoinGame(ctx context.Context, pin string, userID uint) (*dtos.LobbyUpdatePayload, error)
+	LeaveGame(ctx context.Context, pin string, userID uint) (*dtos.LobbyUpdatePayload, error)
 }
 
 type gameUseCase struct {
@@ -21,6 +23,7 @@ type gameUseCase struct {
 	quizGameLogRepo   repositories.QuizGameLogRepository
 	classMaterialRepo repositories.ClassMaterialRepository
 	classRepo         repositories.ClassRepository
+	userRepo          repositories.UserRepository
 }
 
 func NewGameUseCase(
@@ -28,12 +31,14 @@ func NewGameUseCase(
 	quizGameLogRepo repositories.QuizGameLogRepository,
 	classMaterialRepo repositories.ClassMaterialRepository,
 	classRepo repositories.ClassRepository,
+	userRepo repositories.UserRepository,
 ) GameUseCase {
 	return &gameUseCase{
 		gameRepo:          gameRepo,
 		quizGameLogRepo:   quizGameLogRepo,
 		classMaterialRepo: classMaterialRepo,
 		classRepo:         classRepo,
+		userRepo:          userRepo,
 	}
 }
 
@@ -118,5 +123,94 @@ func (u *gameUseCase) StartGameSession(ctx context.Context, teacherID uint, dto 
 	return &dtos.CreateGameResponseDto{
 		Message: "Game session started",
 		GamePIN: pin,
+	}, nil
+}
+
+func (u *gameUseCase) JoinGame(ctx context.Context, pin string, userID uint) (*dtos.LobbyUpdatePayload, error) {
+	// 1. Check Game Exists
+	exists, err := u.gameRepo.KeyExists(ctx, fmt.Sprintf("game:%s:state", pin))
+	if err != nil || !exists {
+		return nil, errors.New("game session not found")
+	}
+
+	// 2. Get User Details
+	user, err := u.userRepo.GetByID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 3. Save to Redis
+	playerData := &entities.PlayerDataRedis{
+		Name:      user.FirstName + " " + user.LastName,
+		AvatarURL: user.ProfileImgURL,
+		Score:     0,
+		Correct:   0,
+		Streak:    0,
+	}
+	if err := u.gameRepo.SavePlayerData(ctx, pin, userID, playerData); err != nil {
+		return nil, err
+	}
+	if err := u.gameRepo.AddPlayerToLobby(ctx, pin, userID); err != nil {
+		return nil, err
+	}
+
+	// 4. Get Current Lobby State for Broadcast
+	playerIDs, err := u.gameRepo.GetLobbyPlayers(ctx, pin)
+	if err != nil {
+		return nil, err
+	}
+
+	var players []dtos.PlayerDto
+	for _, pid := range playerIDs {
+		pData, _ := u.gameRepo.GetPlayerData(ctx, pin, pid)
+		if pData != nil {
+			players = append(players, dtos.PlayerDto{
+				UserID:    pid,
+				Name:      pData.Name,
+				AvatarURL: pData.AvatarURL,
+				Score:     pData.Score,
+			})
+		}
+	}
+
+	return &dtos.LobbyUpdatePayload{
+		PlayerCount: len(players),
+		Players:     players,
+		NewPlayer: &dtos.PlayerDto{
+			UserID:    user.ID,
+			Name:      playerData.Name,
+			AvatarURL: playerData.AvatarURL,
+		},
+	}, nil
+}
+
+func (u *gameUseCase) LeaveGame(ctx context.Context, pin string, userID uint) (*dtos.LobbyUpdatePayload, error) {
+	// 1. Remove from Redis Set
+	if err := u.gameRepo.RemovePlayerFromLobby(ctx, pin, userID); err != nil {
+		return nil, err
+	}
+
+	// 2. Get updated list for broadcast
+	playerIDs, err := u.gameRepo.GetLobbyPlayers(ctx, pin)
+	if err != nil {
+		return nil, err
+	}
+
+	var players []dtos.PlayerDto
+	for _, pid := range playerIDs {
+		pData, _ := u.gameRepo.GetPlayerData(ctx, pin, pid)
+		if pData != nil {
+			players = append(players, dtos.PlayerDto{
+				UserID:    pid,
+				Name:      pData.Name,
+				AvatarURL: pData.AvatarURL,
+				Score:     pData.Score,
+			})
+		}
+	}
+
+	return &dtos.LobbyUpdatePayload{
+		PlayerCount: len(players),
+		Players:     players,
 	}, nil
 }

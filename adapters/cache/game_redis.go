@@ -94,6 +94,11 @@ func (r *gameRedisRepository) AddPlayerToLobby(ctx context.Context, pin string, 
 	return r.client.Expire(ctx, key, TTL_GAME).Err()
 }
 
+func (r *gameRedisRepository) RemovePlayerFromLobby(ctx context.Context, pin string, userID uint) error {
+	key := fmt.Sprintf("game:%s:players", pin)
+	return r.client.SRem(ctx, key, userID).Err()
+}
+
 func (r *gameRedisRepository) AddAllowedPlayer(ctx context.Context, pin string, userID uint) error {
 	key := fmt.Sprintf("game:%s:allowed", pin)
 	err := r.client.SAdd(ctx, key, userID).Err()

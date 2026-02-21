@@ -53,7 +53,7 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	quizHandler := rest.NewQuizHandler(quizUseCase)
 
 	gameRepo := cache.NewGameRedisRepository(cacheService)
-	gameUseCase := usecases.NewGameUseCase(gameRepo, quizGameLogRepo, classMaterialRepo, classRepo)
+	gameUseCase := usecases.NewGameUseCase(gameRepo, quizGameLogRepo, classMaterialRepo, classRepo, userRepo)
 	gameHandler := rest.NewGameHandler(gameUseCase)
 
 	handler := api.ProvideHandler(
@@ -121,7 +121,7 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 
 	// Websocket
 
-	manager := websocket.NewManager()
+	manager := websocket.NewManager(gameUseCase)
 	r.GET("/ws", func(c *gin.Context) {
 		// 1. Get Token
 		tokenString := c.Query("token")

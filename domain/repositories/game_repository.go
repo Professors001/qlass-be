@@ -21,6 +21,7 @@ type GameRepository interface {
 
 	// 3. Players (Lobby & Allowed)
 	AddPlayerToLobby(ctx context.Context, pin string, userID uint) error
+	RemovePlayerFromLobby(ctx context.Context, pin string, userID uint) error
 	AddAllowedPlayer(ctx context.Context, pin string, userID uint) error
 	IsPlayerAllowed(ctx context.Context, pin string, userID uint) (bool, error)
 	GetLobbyPlayers(ctx context.Context, pin string) ([]uint, error)

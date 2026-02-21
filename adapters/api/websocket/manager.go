@@ -1,12 +1,14 @@
 package websocket
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"qlass-be/middleware"
+	"qlass-be/usecases"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -25,13 +27,15 @@ type Manager struct {
 	rooms        map[string]ClientList // Key: GamePIN, Value: List of Clients in that room
 	sync.RWMutex                       // Use RWMutex for better concurrency
 	handlers     map[string]EventHandler
+	gameUseCase  usecases.GameUseCase
 }
 
-func NewManager() *Manager {
+func NewManager(gameUseCase usecases.GameUseCase) *Manager {
 	m := &Manager{
-		clients:  make(ClientList),
-		rooms:    make(map[string]ClientList), // <--- Important!
-		handlers: make(map[string]EventHandler),
+		clients:     make(ClientList),
+		rooms:       make(map[string]ClientList), // <--- Important!
+		handlers:    make(map[string]EventHandler),
+		gameUseCase: gameUseCase,
 	}
 	m.setEventHandlers()
 	return m
@@ -87,6 +91,14 @@ func (m *Manager) setEventHandler(eventType string, handler EventHandler) {
 }
 
 func (m *Manager) ServeWS(w http.ResponseWriter, r *http.Request, claims *middleware.JWTCustomClaims, pin string) {
+	// 1. Join Game Logic (Validate & Update Redis)
+	lobbyUpdate, err := m.gameUseCase.JoinGame(r.Context(), pin, claims.UserId)
+	if err != nil {
+		log.Println("JoinGame error:", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	conn, err := websocketUpgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
@@ -97,6 +109,16 @@ func (m *Manager) ServeWS(w http.ResponseWriter, r *http.Request, claims *middle
 	client := NewClient(conn, m, claims.UserId, claims.Role, pin)
 
 	m.addClient(client)
+
+	// 2. Broadcast Lobby Update
+	payloadBytes, _ := json.Marshal(lobbyUpdate)
+	event := Event{
+		Type:    "LOBBY_UPDATE",
+		Payload: payloadBytes,
+	}
+
+	// Broadcast to room
+	m.Broadcast(pin, event)
 }
 
 func (m *Manager) addClient(client *Client) {
@@ -123,13 +145,14 @@ func (m *Manager) addClient(client *Client) {
 // Update removeClient to clean up the room as well
 func (m *Manager) removeClient(client *Client) {
 	m.Lock()
-	defer m.Unlock()
 
-	// Remove from global
-	if _, ok := m.clients[client]; ok {
-		client.connection.Close()
-		delete(m.clients, client)
+	if _, ok := m.clients[client]; !ok {
+		m.Unlock()
+		return
 	}
+
+	client.connection.Close()
+	delete(m.clients, client)
 
 	// Remove from Room
 	if client.GamePIN != "" {
@@ -141,6 +164,25 @@ func (m *Manager) removeClient(client *Client) {
 				delete(m.rooms, client.GamePIN)
 			}
 		}
+	}
+	m.Unlock()
+
+	if client.GamePIN != "" && client.UserID != 0 {
+		go func() {
+			ctx := context.Background()
+			lobbyUpdate, err := m.gameUseCase.LeaveGame(ctx, client.GamePIN, client.UserID)
+			if err != nil {
+				log.Println("LeaveGame error:", err)
+				return
+			}
+
+			payloadBytes, _ := json.Marshal(lobbyUpdate)
+			event := Event{
+				Type:    "LOBBY_UPDATE",
+				Payload: payloadBytes,
+			}
+			m.Broadcast(client.GamePIN, event)
+		}()
 	}
 }
 
