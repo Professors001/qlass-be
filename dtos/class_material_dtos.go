@@ -15,6 +15,17 @@ type CreateClassMaterialDto struct {
 	Action        string     `json:"action" binding:"required,oneof=draft publish"`
 }
 
+type CreateQuizClassMaterial struct {
+	ClassID     uint       `json:"class_id" binding:"required"`
+	Type        string     `json:"type" binding:"required,oneof=lecture assignment quiz"`
+	Title       string     `json:"title" binding:"required,max=255"`
+	Description string     `json:"description"`
+	QuizID      uint       `json:"quiz_id"`
+	Points      *int       `json:"points" binding:"omitempty,min=0"`
+	DueAt       *time.Time `json:"due_at" binding:"omitempty,gt"`
+	Action      string     `json:"action" binding:"required,oneof=draft publish"`
+}
+
 type GetThumnailClassMaterialDto struct {
 	ID          uint       `json:"id"`
 	ClassID     uint       `json:"class_id"`
