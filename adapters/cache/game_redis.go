@@ -17,8 +17,8 @@ type gameRedisRepository struct {
 	client *redis.Client
 }
 
-func NewGameRedisRepository(client *redis.Client) repositories.GameRepository {
-	return &gameRedisRepository{client: client}
+func NewGameRedisRepository(helper *CacheHelper) repositories.GameRepository {
+	return &gameRedisRepository{client: helper.cache.client}
 }
 
 const (

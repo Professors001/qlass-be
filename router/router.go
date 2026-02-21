@@ -52,6 +52,10 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	quizUseCase := usecases.NewQuizUseCase(quizRepo, quizQuestionRepo, quizOptionRepo, attachmentRepo, attachmentUseCase)
 	quizHandler := rest.NewQuizHandler(quizUseCase)
 
+	gameRepo := cache.NewGameRedisRepository(cacheService)
+	gameUseCase := usecases.NewGameUseCase(gameRepo, quizGameLogRepo, classMaterialRepo, classRepo)
+	gameHandler := rest.NewGameHandler(gameUseCase)
+
 	handler := api.ProvideHandler(
 		userHandler,
 		classHandler,
@@ -109,6 +113,11 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	quizRouter.POST("/:id/questions", handler.QuizHandler.SaveQuizQuestion)
 	quizRouter.GET("/:id", handler.QuizHandler.GetQuiz)
 	quizRouter.GET("/user", handler.QuizHandler.GetQuizzesByUserID)
+
+	// Games
+	gameRouter := r.Group("/games")
+	gameRouter.Use(middleware.AuthorizeJWT(jwtService))
+	gameRouter.POST("/start", gameHandler.StartGame)
 
 	// Websocket
 

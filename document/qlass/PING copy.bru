@@ -1,0 +1,26 @@
+meta {
+  name: PING copy
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{base_url}}/games/start
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoidGVhY2hlciIsImV4cCI6MTc3MTk1ODU5NH0.X8LhntsiG5SqG6wzI-eydidtx363FnGwu15p8yYgstQ
+}
+
+body:json {
+  {
+    "class_material_id": 3
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
