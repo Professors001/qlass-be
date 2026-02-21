@@ -81,3 +81,20 @@ func (h *MaterialHandler) GetMaterialsByClassID(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"data": res})
 }
+
+// In adapters/api/rest/class_material_handler.go
+
+func (h *MaterialHandler) CreateQuizMaterial(c *gin.Context) {
+	var dto dtos.CreateQuizClassMaterialDto
+	if err := c.ShouldBindJSON(&dto); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.materialUseCase.CreateQuizMaterial(dto); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"message": "Quiz material created successfully"})
+}

@@ -36,15 +36,17 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	attachmentUseCase := usecases.NewAttachmentUseCase(storageService, attachmentRepo, userRepo, cfg)
 	attachmentHandler := rest.NewAttachmentHandler(attachmentUseCase)
 
+	quizRepo := databases.NewPostgresQuizRepository(db)
+	quizGameLogRepo := databases.NewPostgresQuizGameLogRepository(db)
+
 	classMaterialRepo := databases.NewPostgresClassMaterialRepository(db)
-	classMaterialUseCase := usecases.NewClassMaterialUseCase(classMaterialRepo, classRepo, attachmentRepo, attachmentUseCase)
+	classMaterialUseCase := usecases.NewClassMaterialUseCase(classMaterialRepo, classRepo, attachmentRepo, attachmentUseCase, quizGameLogRepo, quizRepo)
 	classMaterialHandler := rest.NewMaterialHandler(classMaterialUseCase)
 
 	submissionRepo := databases.NewPostgresSubmissionRepository(db)
 	submissionUseCase := usecases.NewSubmissionUseCase(submissionRepo, classMaterialRepo, attachmentRepo, attachmentUseCase)
 	submissionHandler := rest.NewSubmissionHandler(submissionUseCase)
 
-	quizRepo := databases.NewPostgresQuizRepository(db)
 	quizQuestionRepo := databases.NewPostgresQuizQuestionRepository(db)
 	quizOptionRepo := databases.NewPostgresQuizOptionRepository(db)
 	quizUseCase := usecases.NewQuizUseCase(quizRepo, quizQuestionRepo, quizOptionRepo, attachmentRepo, attachmentUseCase)
@@ -89,6 +91,7 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	materialRouter.Use(middleware.AuthorizeJWT(jwtService))
 	materialRouter.POST("", handler.ClassMaterialHandler.CreateMaterial)
 	materialRouter.GET("/:id", handler.ClassMaterialHandler.GetMaterialByID)
+	materialRouter.POST("/quiz", handler.ClassMaterialHandler.CreateQuizMaterial)
 	materialRouter.GET("/class/:class_id", handler.ClassMaterialHandler.GetMaterialsByClassID)
 
 	// Submissions

@@ -1,16 +1,21 @@
 package usecases
 
 import (
+	"encoding/json"
 	"errors"
+	"qlass-be/domain/entities"
 	"qlass-be/domain/repositories"
 	"qlass-be/dtos"
 	"qlass-be/transforms"
 	"qlass-be/utils"
 	"time"
+
+	"gorm.io/datatypes"
 )
 
 type ClassMaterialUseCase interface {
 	CreateClassMaterial(dto *dtos.CreateClassMaterialDto, ownerID uint) error
+	CreateQuizMaterial(dto dtos.CreateQuizClassMaterialDto) error
 	GetMaterialByID(id uint) (*dtos.GetClassMaterialDto, error)
 	GetMaterialsByClassID(classID uint) ([]*dtos.GetThumnailClassMaterialDto, error)
 }
@@ -20,14 +25,21 @@ type classMaterialUseCase struct {
 	classRepo         repositories.ClassRepository
 	attachmentRepo    repositories.AttachmentRepository
 	attachmentUseCase AttachmentUseCase
+
+	quizGameLogRepo repositories.QuizGameLogRepository
+	quizRepo        repositories.QuizRepository
 }
 
-func NewClassMaterialUseCase(classMaterialRepo repositories.ClassMaterialRepository, classRepo repositories.ClassRepository, attachmentRepo repositories.AttachmentRepository, attachmentUseCase AttachmentUseCase) ClassMaterialUseCase {
+func NewClassMaterialUseCase(classMaterialRepo repositories.ClassMaterialRepository, classRepo repositories.ClassRepository, attachmentRepo repositories.AttachmentRepository, attachmentUseCase AttachmentUseCase, quizGameLogRepo repositories.QuizGameLogRepository,
+	quizRepo repositories.QuizRepository,
+) ClassMaterialUseCase {
 	return &classMaterialUseCase{
 		classMaterialRepo: classMaterialRepo,
 		classRepo:         classRepo,
 		attachmentRepo:    attachmentRepo,
 		attachmentUseCase: attachmentUseCase,
+		quizGameLogRepo:   quizGameLogRepo,
+		quizRepo:          quizRepo,
 	}
 }
 
@@ -75,6 +87,92 @@ func (u *classMaterialUseCase) CreateClassMaterial(dto *dtos.CreateClassMaterial
 	return nil
 }
 
+func (u *classMaterialUseCase) CreateQuizMaterial(dto dtos.CreateQuizClassMaterialDto) error {
+	// 1. Fetch the Quiz to create a snapshot
+	quiz, err := u.quizRepo.GetByID(dto.QuizID)
+	if err != nil {
+		return err
+	}
+
+	// 2. Create the ClassMaterial
+	material := &entities.ClassMaterial{
+		ClassID:     dto.ClassID,
+		Type:        "quiz", // Enforce type
+		Title:       dto.Title,
+		Description: dto.Description,
+		Points:      dto.Points,
+		DueAt:       dto.DueAt,
+		IsPublished: dto.Action == "publish",
+	}
+
+	if dto.Action == "publish" {
+		now := time.Now()
+		material.PublishedAt = &now
+	}
+
+	if err := u.classMaterialRepo.Create(material); err != nil {
+		return err
+	}
+
+	// 3. Create the QuizGameLog
+	// Serialize quiz to JSON for the snapshot
+	var questionDtos []dtos.GetQuizQuestionResponse
+	for _, q := range quiz.Questions {
+		var attachmentDto *dtos.GetAttachmentResponseDto
+		atts, err := u.attachmentUseCase.GetAttachmentsByOwner("quiz_question", q.ID)
+		if err == nil && len(atts) > 0 {
+			attachmentDto = atts[0]
+		}
+
+		var optionDtos []dtos.GetQuizOptionResponse
+		for _, o := range q.Options {
+			optionDtos = append(optionDtos, dtos.GetQuizOptionResponse{
+				ID:         o.ID,
+				OptionText: o.OptionText,
+				IsCorrect:  o.IsCorrect,
+				OrderIndex: o.OrderIndex,
+			})
+		}
+
+		questionDtos = append(questionDtos, dtos.GetQuizQuestionResponse{
+			ID:               q.ID,
+			QuestionText:     q.QuestionText,
+			MediaAttachment:  attachmentDto,
+			PointsMultiplier: q.PointsMultiplier,
+			TimeLimitSeconds: q.TimeLimitSeconds,
+			OrderIndex:       q.OrderIndex,
+			Options:          optionDtos,
+		})
+	}
+
+	snapshotDto := dtos.GetQuizResponseDto{
+		ID:                     quiz.ID,
+		UserID:                 quiz.UserID,
+		Title:                  quiz.Title,
+		Description:            quiz.Description,
+		DefaultTimePerQuestion: quiz.DefaultTimePerQuestion,
+		Questions:              questionDtos,
+	}
+
+	quizSnapshot, err := json.Marshal(snapshotDto)
+	if err != nil {
+		return err
+	}
+
+	gameLog := &entities.QuizGameLog{
+		ClassMaterialID: material.ID,
+		QuizPin:         "",            // Initially empty/null
+		Status:          "not_started", // Initial status
+		QuizSnapshot:    datatypes.JSON(quizSnapshot),
+	}
+
+	if err := u.quizGameLogRepo.Create(gameLog); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (u *classMaterialUseCase) GetMaterialByID(id uint) (*dtos.GetClassMaterialDto, error) {
 	material, err := u.classMaterialRepo.GetByID(id)
 	if err != nil {
@@ -86,7 +184,25 @@ func (u *classMaterialUseCase) GetMaterialByID(id uint) (*dtos.GetClassMaterialD
 		return nil, err
 	}
 
-	return transforms.EntityToGetClassMaterialDtoWithAttachments(material, attachmentDtos), nil
+	res := transforms.EntityToGetClassMaterialDtoWithAttachments(material, attachmentDtos)
+
+	if material.Type == "quiz" {
+		logs, err := u.quizGameLogRepo.GetByClassMaterialID(material.ID)
+		if err == nil && len(logs) > 0 {
+			log := logs[0]
+			res.QuizGameLog = &dtos.QuizGameLogDto{
+				ID:              log.ID,
+				ClassMaterialID: log.ClassMaterialID,
+				QuizPin:         log.QuizPin,
+				Status:          log.Status,
+				StartedAt:       log.StartedAt,
+				FinishedAt:      log.FinishedAt,
+				QuizSnapshot:    log.QuizSnapshot,
+			}
+		}
+	}
+
+	return res, nil
 }
 
 func (u *classMaterialUseCase) GetMaterialsByClassID(classID uint) ([]*dtos.GetThumnailClassMaterialDto, error) {

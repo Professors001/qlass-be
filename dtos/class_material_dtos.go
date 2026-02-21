@@ -2,6 +2,8 @@ package dtos
 
 import (
 	"time"
+
+	"gorm.io/datatypes"
 )
 
 type CreateClassMaterialDto struct {
@@ -15,7 +17,7 @@ type CreateClassMaterialDto struct {
 	Action        string     `json:"action" binding:"required,oneof=draft publish"`
 }
 
-type CreateQuizClassMaterial struct {
+type CreateQuizClassMaterialDto struct {
 	ClassID     uint       `json:"class_id" binding:"required"`
 	Type        string     `json:"type" binding:"required,oneof=lecture assignment quiz"`
 	Title       string     `json:"title" binding:"required,max=255"`
@@ -48,4 +50,15 @@ type GetClassMaterialDto struct {
 	CreatedAt   time.Time                   `json:"created_at"`
 	Points      *int                        `json:"points"`
 	DueAt       *time.Time                  `json:"due_at"`
+	QuizGameLog *QuizGameLogDto             `json:"quiz_game_log,omitempty"`
+}
+
+type QuizGameLogDto struct {
+	ID              uint           `json:"id"`
+	ClassMaterialID uint           `json:"class_material_id"`
+	QuizPin         string         `json:"quiz_pin"`
+	Status          string         `json:"status"`
+	StartedAt       *time.Time     `json:"started_at"`
+	FinishedAt      *time.Time     `json:"finished_at"`
+	QuizSnapshot    datatypes.JSON `json:"quiz_snapshot"`
 }
