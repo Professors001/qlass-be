@@ -13,6 +13,7 @@ const (
 	EventSendMessage = "send_message"
 	EventJoinRoom    = "join_room"
 	EventStartGame   = "start_game"
+	EventGameState   = "game_state"
 )
 
 type SendMessagePayload struct {

@@ -14,7 +14,7 @@ import (
 
 type GameUseCase interface {
 	StartGameSession(ctx context.Context, teacherID uint, dto dtos.CreateGameRequestDto) (*dtos.CreateGameResponseDto, error)
-	JoinGame(ctx context.Context, pin string, userID uint) (*dtos.LobbyUpdatePayload, error)
+	JoinGame(ctx context.Context, pin string, userID uint) (*dtos.GameInfoResponseDto, *dtos.LobbyUpdatePayload, error)
 	LeaveGame(ctx context.Context, pin string, userID uint) (*dtos.LobbyUpdatePayload, error)
 	StartGame(ctx context.Context, pin string, hostID uint) error
 }
@@ -127,24 +127,24 @@ func (u *gameUseCase) StartGameSession(ctx context.Context, teacherID uint, dto 
 	}, nil
 }
 
-func (u *gameUseCase) JoinGame(ctx context.Context, pin string, userID uint) (*dtos.LobbyUpdatePayload, error) {
+func (u *gameUseCase) JoinGame(ctx context.Context, pin string, userID uint) (*dtos.GameInfoResponseDto, *dtos.LobbyUpdatePayload, error) {
 	// 1. Check Game State
 	state, err := u.gameRepo.GetGameState(ctx, pin)
 	if err != nil {
-		return nil, errors.New("game session not found")
+		return nil, nil, errors.New("game session not found")
 	}
 
 	if state.Status != "waiting" {
 		inLobby, err := u.gameRepo.IsPlayerInLobby(ctx, pin, userID)
 		if err != nil || !inLobby {
-			return nil, errors.New("game has already started")
+			return nil, nil, errors.New("game has already started")
 		}
 	}
 
 	// 2. Get User Details
 	user, err := u.userRepo.GetByID(userID)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// 3. Save to Redis (Preserve stats if reconnecting)
@@ -165,16 +165,16 @@ func (u *gameUseCase) JoinGame(ctx context.Context, pin string, userID uint) (*d
 		playerData.Streak = existingData.Streak
 	}
 	if err := u.gameRepo.SavePlayerData(ctx, pin, userID, playerData); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if err := u.gameRepo.AddPlayerToLobby(ctx, pin, userID); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// 4. Get Current Lobby State for Broadcast
 	playerIDs, err := u.gameRepo.GetLobbyPlayers(ctx, pin)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var players []dtos.PlayerDto
@@ -190,7 +190,19 @@ func (u *gameUseCase) JoinGame(ctx context.Context, pin string, userID uint) (*d
 		}
 	}
 
-	return &dtos.LobbyUpdatePayload{
+	gameInfo := &dtos.GameInfoResponseDto{
+		PIN:               state.Pin,
+		Status:            state.Status,
+		QuestionState:     state.QuestionState,
+		QuizTitle:         state.QuizTitle,
+		CurrentQuestion:   state.CurrentQuestion,
+		TotalQuestions:    state.TotalQuestions,
+		TotalPlayers:      len(players),
+		QuestionStartedAt: state.QuestionStartedAt.UnixMilli(),
+		QuestionEndsAt:    state.QuestionEndsAt.UnixMilli(),
+	}
+
+	return gameInfo, &dtos.LobbyUpdatePayload{
 		PlayerCount: len(players),
 		Players:     players,
 		NewPlayer: &dtos.PlayerDto{
@@ -214,6 +226,8 @@ func (u *gameUseCase) LeaveGame(ctx context.Context, pin string, userID uint) (*
 			return nil, err
 		}
 		_ = u.gameRepo.DeletePlayerData(ctx, pin, userID)
+	} else {
+		return nil, nil
 	}
 
 	// 3. Get updated list for broadcast

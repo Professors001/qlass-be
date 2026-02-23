@@ -115,7 +115,7 @@ func (m *Manager) setEventHandler(eventType string, handler EventHandler) {
 
 func (m *Manager) ServeWS(w http.ResponseWriter, r *http.Request, claims *middleware.JWTCustomClaims, pin string) {
 	// 1. Join Game Logic (Validate & Update Redis)
-	lobbyUpdate, err := m.gameUseCase.JoinGame(r.Context(), pin, claims.UserId)
+	gameInfo, lobbyUpdate, err := m.gameUseCase.JoinGame(r.Context(), pin, claims.UserId)
 	if err != nil {
 		log.Println("JoinGame error:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -133,15 +133,24 @@ func (m *Manager) ServeWS(w http.ResponseWriter, r *http.Request, claims *middle
 
 	m.addClient(client)
 
-	// 2. Broadcast Lobby Update
-	payloadBytes, _ := json.Marshal(lobbyUpdate)
-	event := Event{
-		Type:    "LOBBY_UPDATE",
-		Payload: payloadBytes,
+	// 2. Send Initial Game State to the connecting client ONLY
+	gameInfoBytes, _ := json.Marshal(gameInfo)
+	client.egress <- Event{
+		Type:    EventGameState,
+		Payload: gameInfoBytes,
 	}
 
-	// Broadcast to room
-	m.Broadcast(pin, event)
+	// 3. Broadcast Lobby Update to everyone
+	if gameInfo.Status == "waiting" {
+		payloadBytes, _ := json.Marshal(lobbyUpdate)
+		event := Event{
+			Type:    "LOBBY_UPDATE",
+			Payload: payloadBytes,
+		}
+
+		// Broadcast to room
+		m.Broadcast(pin, event)
+	}
 }
 
 func (m *Manager) addClient(client *Client) {
@@ -196,6 +205,10 @@ func (m *Manager) removeClient(client *Client) {
 			lobbyUpdate, err := m.gameUseCase.LeaveGame(ctx, client.GamePIN, client.UserID)
 			if err != nil {
 				log.Println("LeaveGame error:", err)
+				return
+			}
+
+			if lobbyUpdate == nil {
 				return
 			}
 
