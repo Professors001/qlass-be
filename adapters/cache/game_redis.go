@@ -113,6 +113,11 @@ func (r *gameRedisRepository) IsPlayerAllowed(ctx context.Context, pin string, u
 	return r.client.SIsMember(ctx, key, userID).Result()
 }
 
+func (r *gameRedisRepository) IsPlayerInLobby(ctx context.Context, pin string, userID uint) (bool, error) {
+	key := fmt.Sprintf("game:%s:players", pin)
+	return r.client.SIsMember(ctx, key, userID).Result()
+}
+
 func (r *gameRedisRepository) GetLobbyPlayers(ctx context.Context, pin string) ([]uint, error) {
 	key := fmt.Sprintf("game:%s:players", pin)
 	strIDs, err := r.client.SMembers(ctx, key).Result()
@@ -145,6 +150,11 @@ func (r *gameRedisRepository) GetPlayerData(ctx context.Context, pin string, use
 		return nil, err
 	}
 	return &data, nil
+}
+
+func (r *gameRedisRepository) DeletePlayerData(ctx context.Context, pin string, userID uint) error {
+	key := fmt.Sprintf("game:%s:player:%d", pin, userID)
+	return r.client.Del(ctx, key).Err()
 }
 
 // --- 4. Answers ---

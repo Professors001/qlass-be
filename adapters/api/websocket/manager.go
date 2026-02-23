@@ -44,6 +44,7 @@ func NewManager(gameUseCase usecases.GameUseCase) *Manager {
 func (m *Manager) setEventHandlers() {
 	m.handlers[EventSendMessage] = SendMessage
 	m.handlers[EventJoinRoom] = JoinRoomHandler
+	m.handlers[EventStartGame] = StartGameHandler
 }
 
 func (m *Manager) routeEvent(event Event, c *Client) error {
@@ -83,6 +84,28 @@ func JoinRoomHandler(event Event, c *Client) error {
 	c.manager.AddToRoom(payload.GamePIN, c)
 
 	log.Printf("User %d joined room %s", c.UserID, payload.GamePIN)
+	return nil
+}
+
+func StartGameHandler(event Event, c *Client) error {
+	if c.GamePIN == "" {
+		return errors.New("client is not in a room")
+	}
+
+	if c.Role != "teacher" {
+		return errors.New("unauthorized: only teacher can start the game")
+	}
+
+	if err := c.manager.gameUseCase.StartGame(context.Background(), c.GamePIN, c.UserID); err != nil {
+		return err
+	}
+
+	// Broadcast to room that game has started
+	c.manager.Broadcast(c.GamePIN, Event{
+		Type:    "GAME_STARTED",
+		Payload: []byte("{}"),
+	})
+
 	return nil
 }
 

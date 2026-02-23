@@ -24,10 +24,12 @@ type GameRepository interface {
 	RemovePlayerFromLobby(ctx context.Context, pin string, userID uint) error
 	AddAllowedPlayer(ctx context.Context, pin string, userID uint) error
 	IsPlayerAllowed(ctx context.Context, pin string, userID uint) (bool, error)
+	IsPlayerInLobby(ctx context.Context, pin string, userID uint) (bool, error)
 	GetLobbyPlayers(ctx context.Context, pin string) ([]uint, error)
 
 	SavePlayerData(ctx context.Context, pin string, userID uint, data *entities.PlayerDataRedis) error
 	GetPlayerData(ctx context.Context, pin string, userID uint) (*entities.PlayerDataRedis, error)
+	DeletePlayerData(ctx context.Context, pin string, userID uint) error
 
 	// 4. Answers & Logic
 	// Returns true if added new, false if already existed (duplicate submit)

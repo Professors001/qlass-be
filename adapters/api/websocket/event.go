@@ -12,6 +12,7 @@ type EventHandler func(event Event, c *Client) error
 const (
 	EventSendMessage = "send_message"
 	EventJoinRoom    = "join_room"
+	EventStartGame   = "start_game"
 )
 
 type SendMessagePayload struct {

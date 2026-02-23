@@ -5,7 +5,7 @@ meta {
 }
 
 ws {
-  url: ws://localhost:8080/ws?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozLCJyb2xlIjoic3R1ZGVudCIsImV4cCI6MTc3MTk1ODgzMn0.SJmXYaloOqNPTb5d83EVYn_EvRhwWBA0T95o10EdMJM&pin=937071
+  url: ws://localhost:8080/ws?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozLCJyb2xlIjoic3R1ZGVudCIsImV4cCI6MTc3MjExNzI5NX0.c-qasZjmWQi9cghjf1ReCzwg4qa274fMVqRXeXNLuGY&pin=223651
   body: ws
   auth: none
 }
@@ -15,10 +15,8 @@ body:ws {
   type: json
   content: '''
     {
-      "type": "send_message",
-      "payload": {
-        "message": "Hi_2"
-      }
+      "type": "start_game",
+      "payload": {}
     }
   '''
 }
