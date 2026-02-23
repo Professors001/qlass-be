@@ -56,7 +56,7 @@ func (c *Client) readMessage() {
 	c.connection.SetPongHandler(c.pongHandler)
 
 	for {
-		messageType, payload, err := c.connection.ReadMessage()
+		_, payload, err := c.connection.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Println("error reading message:", err)
@@ -72,10 +72,6 @@ func (c *Client) readMessage() {
 
 		if err := c.manager.routeEvent(request, c); err != nil {
 			log.Println("error handling message:", err)
-		}
-
-		if err := c.connection.WriteMessage(messageType, payload); err != nil {
-			log.Println("error writing message:", err)
 		}
 	}
 }
