@@ -5,7 +5,7 @@ meta {
 }
 
 ws {
-  url: ws://localhost:8080/ws?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozLCJyb2xlIjoic3R1ZGVudCIsImV4cCI6MTc3MjI5NjgzOH0.xytXmFnOqkes2BtykXEwoJrFcXNQO-C2HtOAdDrEvds&pin=869804
+  url: ws://localhost:8080/ws?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozLCJyb2xlIjoic3R1ZGVudCIsImV4cCI6MTc3MjI5NjgzOH0.xytXmFnOqkes2BtykXEwoJrFcXNQO-C2HtOAdDrEvds&pin=544588
   body: ws
   auth: none
 }
@@ -15,8 +15,8 @@ body:ws {
   type: json
   content: '''
     {
-      "type": "start_game",
-      "payload": {}
+      "type": "student_answer",
+      "payload": { "option_id": 86 }
     }
   '''
 }

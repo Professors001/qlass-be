@@ -10,11 +10,12 @@ type Event struct {
 type EventHandler func(event Event, c *Client) error
 
 const (
-	EventSendMessage = "send_message"
-	EventJoinRoom    = "join_room"
-	EventStartGame   = "start_game"
-	EventGameState   = "game_state"
-	EventNext        = "next"
+	EventSendMessage   = "send_message"
+	EventJoinRoom      = "join_room"
+	EventStartGame     = "start_game"
+	EventGameState     = "game_state"
+	EventNext          = "next"
+	EventStudentAnswer = "student_answer"
 )
 
 type SendMessagePayload struct {
@@ -24,4 +25,8 @@ type SendMessagePayload struct {
 
 type JoinRoomPayload struct {
 	GamePIN string `json:"game_pin"`
+}
+
+type StudentAnswerPayload struct {
+	OptionID uint `json:"option_id"`
 }

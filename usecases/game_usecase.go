@@ -19,6 +19,7 @@ type GameUseCase interface {
 	StartGame(ctx context.Context, pin string, hostID uint) error
 	NextStep(ctx context.Context, pin string, hostID uint) (*dtos.WSEventDto, error)
 	TimeoutQuestion(ctx context.Context, pin string) (*dtos.WSEventDto, error)
+	SubmitAnswer(ctx context.Context, pin string, userID uint, optionID uint) (*dtos.StudentAnswerResponseDto, *dtos.LiveStatsPayload, error)
 }
 
 type gameUseCase struct {
@@ -525,6 +526,134 @@ func (u *gameUseCase) getLeaderboardDtos(ctx context.Context, pin string, limit 
 		})
 	}
 	return result
+}
+
+func (u *gameUseCase) SubmitAnswer(ctx context.Context, pin string, userID uint, optionID uint) (*dtos.StudentAnswerResponseDto, *dtos.LiveStatsPayload, error) {
+	// 1. Get Game State
+	state, err := u.gameRepo.GetGameState(ctx, pin)
+	if err != nil {
+		return nil, nil, errors.New("game session not found")
+	}
+
+	if state.QuestionState != "answering" {
+		return nil, nil, errors.New("question is not open for answers")
+	}
+
+	// 2. Prevent Duplicate Answer
+	isNew, err := u.gameRepo.MarkUserAnswered(ctx, pin, state.CurrentQuestion, userID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if !isNew {
+		return nil, nil, errors.New("already answered this question")
+	}
+
+	// 3. Calculate Time Taken
+	now := time.Now()
+	timeTaken := now.Sub(state.QuestionStartedAt).Seconds()
+
+	// 4. Get Quiz Data
+	quizDataJSON, err := u.gameRepo.GetQuizData(ctx, pin)
+	if err != nil {
+		return nil, nil, err
+	}
+	var quizSnapshot dtos.GetQuizResponseDto
+	if err := json.Unmarshal([]byte(quizDataJSON), &quizSnapshot); err != nil {
+		return nil, nil, err
+	}
+
+	if state.CurrentQuestion < 1 || state.CurrentQuestion > len(quizSnapshot.Questions) {
+		return nil, nil, errors.New("invalid question index")
+	}
+	question := quizSnapshot.Questions[state.CurrentQuestion-1]
+
+	// 5. Validate Option & Calculate Score
+	var selectedOption *dtos.GetQuizOptionResponse
+	for _, opt := range question.Options {
+		if opt.ID == optionID {
+			selectedOption = &opt
+			break
+		}
+	}
+	if selectedOption == nil {
+		return nil, nil, errors.New("invalid option id")
+	}
+
+	points := 0
+	if selectedOption.IsCorrect {
+		ratio := timeTaken / float64(question.TimeLimitSeconds)
+		if ratio > 1 {
+			ratio = 1
+		}
+		// Score = Base(1000) * Multiplier * (1 - ratio/2)
+		// Instant = 1000, End of time = 500
+		baseScore := 1000.0 * (1 - (ratio / 2))
+		points = int(baseScore) * question.PointsMultiplier
+	}
+
+	// 6. Update Player Stats
+	pData, _ := u.gameRepo.GetPlayerData(ctx, pin, userID)
+	if pData == nil {
+		pData = &entities.PlayerDataRedis{}
+	}
+
+	if selectedOption.IsCorrect {
+		pData.Score += points
+		pData.Correct++
+		pData.Streak++
+	} else {
+		pData.Streak = 0
+	}
+
+	if err := u.gameRepo.SavePlayerData(ctx, pin, userID, pData); err != nil {
+		return nil, nil, err
+	}
+	if err := u.gameRepo.UpdateScore(ctx, pin, userID, float64(pData.Score)); err != nil {
+		return nil, nil, err
+	}
+
+	// 7. Update Game Counters
+	var fieldToInc string
+	switch selectedOption.OrderIndex {
+	case 1:
+		fieldToInc = "option_a_count"
+	case 2:
+		fieldToInc = "option_b_count"
+	case 3:
+		fieldToInc = "option_c_count"
+	case 4:
+		fieldToInc = "option_d_count"
+	}
+	if fieldToInc != "" {
+		u.gameRepo.IncrementField(ctx, pin, fieldToInc, 1)
+	}
+
+	// 8. Log Answer
+	logEntry := &entities.AnswerLog{
+		OptionID:  optionID,
+		TimeMs:    int(timeTaken * 1000),
+		Points:    points,
+		IsCorrect: selectedOption.IsCorrect,
+	}
+	u.gameRepo.SaveAnswerDetail(ctx, pin, state.CurrentQuestion, userID, logEntry)
+
+	// 9. Get Updated Stats for Broadcast
+	updatedState, err := u.gameRepo.GetGameState(ctx, pin)
+	var stats *dtos.LiveStatsPayload
+	if err == nil {
+		stats = &dtos.LiveStatsPayload{
+			TotalPlayers:  updatedState.TotalPlayers,
+			OptionACount:  updatedState.OptionACount,
+			OptionBCount:  updatedState.OptionBCount,
+			OptionCCount:  updatedState.OptionCCount,
+			OptionDCount:  updatedState.OptionDCount,
+			AnsweredCount: updatedState.OptionACount + updatedState.OptionBCount + updatedState.OptionCCount + updatedState.OptionDCount,
+		}
+	}
+
+	return &dtos.StudentAnswerResponseDto{
+		Message: "Answer submitted successfully",
+	}, stats, nil
 }
 
 func (u *gameUseCase) NextQuestion(ctx context.Context, pin string, hostID uint) (*dtos.QuestionPayload, error) {

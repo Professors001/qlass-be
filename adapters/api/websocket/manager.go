@@ -48,6 +48,7 @@ func (m *Manager) setEventHandlers() {
 	m.handlers[EventJoinRoom] = JoinRoomHandler
 	m.handlers[EventStartGame] = StartGameHandler
 	m.handlers[EventNext] = NextHandler
+	m.handlers[EventStudentAnswer] = StudentAnswerHandler
 }
 
 func (m *Manager) routeEvent(event Event, c *Client) error {
@@ -158,6 +159,39 @@ func NextHandler(event Event, c *Client) error {
 				}
 			}(c.GamePIN, payload.TimeLimitSeconds)
 		}
+	}
+
+	return nil
+}
+
+func StudentAnswerHandler(event Event, c *Client) error {
+	if c.GamePIN == "" {
+		return errors.New("client is not in a room")
+	}
+
+	var payload StudentAnswerPayload
+	if err := json.Unmarshal(event.Payload, &payload); err != nil {
+		return fmt.Errorf("invalid payload for student_answer: %v", err)
+	}
+
+	resp, stats, err := c.manager.gameUseCase.SubmitAnswer(context.Background(), c.GamePIN, c.UserID, payload.OptionID)
+	if err != nil {
+		return err
+	}
+
+	respBytes, _ := json.Marshal(resp)
+	c.egress <- Event{
+		Type:    "ANSWER_SUBMITTED",
+		Payload: respBytes,
+	}
+
+	// Broadcast Live Stats to everyone (Teacher updates chart, Students see progress)
+	if stats != nil {
+		statsBytes, _ := json.Marshal(stats)
+		c.manager.Broadcast(c.GamePIN, Event{
+			Type:    "LIVE_STATS",
+			Payload: statsBytes,
+		})
 	}
 
 	return nil
