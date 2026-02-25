@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"qlass-be/dtos"
 	"qlass-be/middleware"
 	"qlass-be/usecases"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -45,6 +47,7 @@ func (m *Manager) setEventHandlers() {
 	m.handlers[EventSendMessage] = SendMessage
 	m.handlers[EventJoinRoom] = JoinRoomHandler
 	m.handlers[EventStartGame] = StartGameHandler
+	m.handlers[EventNext] = NextHandler
 }
 
 func (m *Manager) routeEvent(event Event, c *Client) error {
@@ -105,6 +108,57 @@ func StartGameHandler(event Event, c *Client) error {
 		Type:    "GAME_STARTED",
 		Payload: []byte("{}"),
 	})
+
+	return nil
+}
+
+func NextHandler(event Event, c *Client) error {
+	if c.GamePIN == "" {
+		return errors.New("client is not in a room")
+	}
+
+	if c.Role != "teacher" {
+		return errors.New("unauthorized: only teacher can control the game")
+	}
+
+	wsEvent, err := c.manager.gameUseCase.NextStep(context.Background(), c.GamePIN, c.UserID)
+	if err != nil {
+		return err
+	}
+
+	payloadBytes, err := json.Marshal(wsEvent.Payload)
+	if err != nil {
+		return err
+	}
+
+	c.manager.Broadcast(c.GamePIN, Event{
+		Type:    wsEvent.Type,
+		Payload: payloadBytes,
+	})
+
+	// Auto-Next Logic: If we just started a question, start a timer
+	if wsEvent.Type == "NEXT_QUESTION" {
+		if payload, ok := wsEvent.Payload.(dtos.QuestionPayload); ok {
+			go func(pin string, duration int) {
+				time.Sleep(time.Duration(duration) * time.Second)
+
+				// Trigger timeout
+				timeoutEvent, err := c.manager.gameUseCase.TimeoutQuestion(context.Background(), pin)
+				if err != nil {
+					log.Println("Timeout error:", err)
+					return
+				}
+
+				if timeoutEvent != nil {
+					payloadBytes, _ := json.Marshal(timeoutEvent.Payload)
+					c.manager.Broadcast(pin, Event{
+						Type:    timeoutEvent.Type,
+						Payload: payloadBytes,
+					})
+				}
+			}(c.GamePIN, payload.TimeLimitSeconds)
+		}
+	}
 
 	return nil
 }

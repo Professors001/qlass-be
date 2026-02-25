@@ -17,6 +17,8 @@ type GameUseCase interface {
 	JoinGame(ctx context.Context, pin string, userID uint) (*dtos.GameInfoResponseDto, *dtos.LobbyUpdatePayload, error)
 	LeaveGame(ctx context.Context, pin string, userID uint) (*dtos.LobbyUpdatePayload, error)
 	StartGame(ctx context.Context, pin string, hostID uint) error
+	NextStep(ctx context.Context, pin string, hostID uint) (*dtos.WSEventDto, error)
+	TimeoutQuestion(ctx context.Context, pin string) (*dtos.WSEventDto, error)
 }
 
 type gameUseCase struct {
@@ -269,6 +271,260 @@ func (u *gameUseCase) StartGame(ctx context.Context, pin string, hostID uint) er
 	return u.gameRepo.UpdateGameState(ctx, pin, map[string]interface{}{
 		"status": "running",
 	})
+}
+
+func (u *gameUseCase) NextStep(ctx context.Context, pin string, hostID uint) (*dtos.WSEventDto, error) {
+	// 1. Get current Game State
+	state, err := u.gameRepo.GetGameState(ctx, pin)
+	if err != nil {
+		return nil, errors.New("game session not found")
+	}
+
+	// 2. Security Check
+	if state.HostID != hostID {
+		return nil, errors.New("unauthorized: only host can control the game")
+	}
+
+	if state.Status == "finished" {
+		return nil, errors.New("game is already finished")
+	}
+
+	// 3. Handle State Transitions
+	// Case 1: Waiting -> Start Game (Go to Q1 Hold)
+	if state.Status == "waiting" {
+		if err := u.gameRepo.UpdateGameState(ctx, pin, map[string]interface{}{
+			"status":           "running",
+			"current_question": 1,
+			"question_state":   "hold",
+			// Reset counters
+			"option_a_count": 0, "option_b_count": 0, "option_c_count": 0, "option_d_count": 0,
+		}); err != nil {
+			return nil, err
+		}
+		return &dtos.WSEventDto{
+			Type: "GET_READY",
+			Payload: map[string]interface{}{
+				"question_index":  1,
+				"total_questions": state.TotalQuestions,
+			},
+		}, nil
+	}
+
+	// Case 2: Running - Cycle through question states
+	switch state.QuestionState {
+	case "hold":
+		// Hold -> Answering (Start Question)
+		quizDataJSON, err := u.gameRepo.GetQuizData(ctx, pin)
+		if err != nil {
+			return nil, err
+		}
+		var quizSnapshot dtos.GetQuizResponseDto
+		json.Unmarshal([]byte(quizDataJSON), &quizSnapshot)
+
+		currentQ := quizSnapshot.Questions[state.CurrentQuestion-1]
+		now := time.Now()
+		endsAt := now.Add(time.Duration(currentQ.TimeLimitSeconds) * time.Second)
+
+		updates := map[string]interface{}{
+			"question_state":      "answering",
+			"question_started_at": now,
+			"question_ends_at":    endsAt,
+		}
+		// Map Option IDs for counters
+		for _, opt := range currentQ.Options {
+			switch opt.OrderIndex {
+			case 1:
+				updates["option_a_id"] = opt.ID
+			case 2:
+				updates["option_b_id"] = opt.ID
+			case 3:
+				updates["option_c_id"] = opt.ID
+			case 4:
+				updates["option_d_id"] = opt.ID
+			}
+		}
+		if err := u.gameRepo.UpdateGameState(ctx, pin, updates); err != nil {
+			return nil, err
+		}
+
+		// Build Options Payload
+		var options []dtos.WSQuizOptionDto
+		for _, opt := range currentQ.Options {
+			label := ""
+			switch opt.OrderIndex {
+			case 1:
+				label = "A"
+			case 2:
+				label = "B"
+			case 3:
+				label = "C"
+			case 4:
+				label = "D"
+			}
+			options = append(options, dtos.WSQuizOptionDto{
+				ID:         opt.ID,
+				OptionText: opt.OptionText,
+				Label:      label,
+			})
+		}
+
+		return &dtos.WSEventDto{
+			Type: "NEXT_QUESTION",
+			Payload: dtos.QuestionPayload{
+				QuestionIndex:    state.CurrentQuestion,
+				TotalQuestions:   state.TotalQuestions,
+				TimeLimitSeconds: currentQ.TimeLimitSeconds,
+				QuestionText:     currentQ.QuestionText,
+				PointsMultiplier: currentQ.PointsMultiplier,
+				Options:          options,
+			},
+		}, nil
+
+	case "answering":
+		// Answering -> Time Up (Show Stats/Correct Answer)
+		return u.finishQuestion(ctx, pin, state)
+
+	case "time_up":
+		// Time Up -> Revealed (Show Leaderboard)
+		if err := u.gameRepo.UpdateGameState(ctx, pin, map[string]interface{}{
+			"question_state": "revealed",
+		}); err != nil {
+			return nil, err
+		}
+
+		top5 := u.getLeaderboardDtos(ctx, pin, 5)
+		return &dtos.WSEventDto{
+			Type: "ROUND_RESULT",
+			Payload: dtos.RoundResultPayload{
+				Leaderboard: top5,
+			},
+		}, nil
+
+	case "revealed":
+		// Revealed -> Next Question (Hold) OR Game Over
+		if state.CurrentQuestion >= state.TotalQuestions {
+			// Game Over
+			if err := u.gameRepo.UpdateGameState(ctx, pin, map[string]interface{}{
+				"status": "finished",
+			}); err != nil {
+				return nil, err
+			}
+
+			top3 := u.getLeaderboardDtos(ctx, pin, 3)
+			var winner dtos.PlayerDto
+			if len(top3) > 0 {
+				winner = top3[0]
+			}
+
+			return &dtos.WSEventDto{
+				Type: "GAME_OVER",
+				Payload: dtos.GameOverPayload{
+					Winner: winner,
+					Top3:   top3,
+				},
+			}, nil
+		} else {
+			// Next Question
+			nextQ := state.CurrentQuestion + 1
+			if err := u.gameRepo.UpdateGameState(ctx, pin, map[string]interface{}{
+				"current_question": nextQ,
+				"question_state":   "hold",
+				// Reset counters
+				"option_a_count": 0, "option_b_count": 0, "option_c_count": 0, "option_d_count": 0,
+			}); err != nil {
+				return nil, err
+			}
+
+			return &dtos.WSEventDto{
+				Type: "GET_READY",
+				Payload: map[string]interface{}{
+					"question_index":  nextQ,
+					"total_questions": state.TotalQuestions,
+				},
+			}, nil
+		}
+	}
+
+	return nil, errors.New("unknown game state")
+}
+
+func (u *gameUseCase) TimeoutQuestion(ctx context.Context, pin string) (*dtos.WSEventDto, error) {
+	state, err := u.gameRepo.GetGameState(ctx, pin)
+	if err != nil {
+		return nil, err
+	}
+
+	// Only act if we are still in the answering state
+	if state.QuestionState != "answering" {
+		return nil, nil
+	}
+
+	return u.finishQuestion(ctx, pin, state)
+}
+
+func (u *gameUseCase) finishQuestion(ctx context.Context, pin string, state *entities.GameStateRedis) (*dtos.WSEventDto, error) {
+	if err := u.gameRepo.UpdateGameState(ctx, pin, map[string]interface{}{
+		"question_state": "time_up",
+	}); err != nil {
+		return nil, err
+	}
+
+	// Get Correct Option
+	quizDataJSON, _ := u.gameRepo.GetQuizData(ctx, pin)
+	var quizSnapshot dtos.GetQuizResponseDto
+	json.Unmarshal([]byte(quizDataJSON), &quizSnapshot)
+	currentQ := quizSnapshot.Questions[state.CurrentQuestion-1]
+
+	var correctOptionID uint
+	for _, o := range currentQ.Options {
+		if o.IsCorrect {
+			correctOptionID = o.ID
+			break
+		}
+	}
+
+	stats := dtos.LiveStatsPayload{
+		TotalPlayers:  state.TotalPlayers,
+		OptionACount:  state.OptionACount,
+		OptionBCount:  state.OptionBCount,
+		OptionCCount:  state.OptionCCount,
+		OptionDCount:  state.OptionDCount,
+		AnsweredCount: state.OptionACount + state.OptionBCount + state.OptionCCount + state.OptionDCount,
+	}
+
+	return &dtos.WSEventDto{
+		Type: "QUESTION_TIME_UP",
+		Payload: map[string]interface{}{
+			"correct_option_id": correctOptionID,
+			"stats":             stats,
+		},
+	}, nil
+}
+
+// Helper to get enriched leaderboard
+func (u *gameUseCase) getLeaderboardDtos(ctx context.Context, pin string, limit int) []dtos.PlayerDto {
+	leaderboard, _ := u.gameRepo.GetLeaderboard(ctx, pin, limit)
+	var result []dtos.PlayerDto
+	for _, p := range leaderboard {
+		pData, _ := u.gameRepo.GetPlayerData(ctx, pin, p.UserID)
+		name := "Unknown"
+		avatar := ""
+		streak := 0
+		if pData != nil {
+			name = pData.Name
+			avatar = pData.AvatarURL
+			streak = pData.Streak
+		}
+		result = append(result, dtos.PlayerDto{
+			UserID:    p.UserID,
+			Name:      name,
+			AvatarURL: avatar,
+			Score:     p.Score,
+			Rank:      p.Rank,
+			Streak:    streak,
+		})
+	}
+	return result
 }
 
 func (u *gameUseCase) NextQuestion(ctx context.Context, pin string, hostID uint) (*dtos.QuestionPayload, error) {
