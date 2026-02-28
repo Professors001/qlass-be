@@ -34,6 +34,7 @@ type GameRepository interface {
 	// 4. Answers & Logic
 	// Returns true if added new, false if already existed (duplicate submit)
 	MarkUserAnswered(ctx context.Context, pin string, questionIndex int, userID uint) (bool, error)
+	HasUserAnswered(ctx context.Context, pin string, questionIndex int, userID uint) (bool, error)
 	SaveAnswerDetail(ctx context.Context, pin string, questionIndex int, userID uint, answerLog *entities.AnswerLog) error
 
 	// 5. Leaderboard (ZSET)

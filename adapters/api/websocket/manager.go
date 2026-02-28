@@ -161,6 +161,13 @@ func NextHandler(event Event, c *Client) error {
 		}
 	}
 
+	if wsEvent.Type == "GAME_OVER" {
+		go func(pin string) {
+			time.Sleep(2 * time.Second) // Give time for the GAME_OVER message to reach clients
+			c.manager.CloseRoom(pin)
+		}(c.GamePIN)
+	}
+
 	return nil
 }
 
@@ -206,7 +213,11 @@ func (m *Manager) ServeWS(w http.ResponseWriter, r *http.Request, claims *middle
 	gameInfo, lobbyUpdate, err := m.gameUseCase.JoinGame(r.Context(), pin, claims.UserId)
 	if err != nil {
 		log.Println("JoinGame error:", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error": err.Error(),
+		})
 		return
 	}
 
@@ -229,7 +240,7 @@ func (m *Manager) ServeWS(w http.ResponseWriter, r *http.Request, claims *middle
 	}
 
 	// 3. Broadcast Lobby Update to everyone
-	if gameInfo.Status == "waiting" {
+	if gameInfo.Status == "waiting" && lobbyUpdate != nil {
 		payloadBytes, _ := json.Marshal(lobbyUpdate)
 		event := Event{
 			Type:    "LOBBY_UPDATE",
@@ -238,6 +249,53 @@ func (m *Manager) ServeWS(w http.ResponseWriter, r *http.Request, claims *middle
 
 		// Broadcast to room
 		m.Broadcast(pin, event)
+	}
+
+	// 4. Handle Reconnection during "answering" state
+	// If the game is running and in answering state, send the current question and stats
+	if gameInfo.Status == "running" && gameInfo.QuestionState == "answering" {
+		// A. Send Question Payload
+		qPayload, err := m.gameUseCase.GetCurrentQuestion(r.Context(), pin)
+		if err == nil && qPayload != nil {
+			payloadBytes, _ := json.Marshal(qPayload)
+			client.egress <- Event{
+				Type:    "NEXT_QUESTION",
+				Payload: payloadBytes,
+			}
+		}
+
+		// B. Send Live Stats (Teacher needs this, Student might see progress)
+		statsPayload, err := m.gameUseCase.GetLiveStats(r.Context(), pin)
+		if err == nil && statsPayload != nil {
+			payloadBytes, _ := json.Marshal(statsPayload)
+			client.egress <- Event{
+				Type:    "LIVE_STATS",
+				Payload: payloadBytes,
+			}
+		}
+
+		// C. Check if Student has already answered
+		if claims.Role == "player" || claims.Role == "student" {
+			answered, _ := m.gameUseCase.HasUserAnswered(r.Context(), pin, claims.UserId)
+			if answered {
+				client.egress <- Event{
+					Type:    "ANSWER_SUBMITTED",
+					Payload: []byte(`{"message":"You have already answered this question"}`),
+				}
+			}
+		}
+	}
+
+	// 5. Handle Reconnection during "revealed" state
+	if gameInfo.Status == "running" && gameInfo.QuestionState == "revealed" {
+		resultPayload, err := m.gameUseCase.GetRoundResult(r.Context(), pin)
+		if err == nil && resultPayload != nil {
+			payloadBytes, _ := json.Marshal(resultPayload)
+			client.egress <- Event{
+				Type:    "ROUND_RESULT",
+				Payload: payloadBytes,
+			}
+		}
 	}
 }
 
@@ -330,6 +388,22 @@ func (m *Manager) AddToRoom(pin string, client *Client) {
 
 	// 4. Add to room
 	m.rooms[pin][client] = true
+}
+
+func (m *Manager) CloseRoom(pin string) {
+	m.Lock()
+	var clientsToClose []*Client
+	if clients, ok := m.rooms[pin]; ok {
+		for client := range clients {
+			clientsToClose = append(clientsToClose, client)
+		}
+		delete(m.rooms, pin)
+	}
+	m.Unlock()
+
+	for _, client := range clientsToClose {
+		client.connection.Close()
+	}
 }
 
 func (m *Manager) Broadcast(pin string, event Event) {

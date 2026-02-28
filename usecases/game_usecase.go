@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"math/rand"
 	"qlass-be/domain/entities"
@@ -21,6 +22,11 @@ type GameUseCase interface {
 	NextStep(ctx context.Context, pin string, hostID uint) (*dtos.WSEventDto, error)
 	TimeoutQuestion(ctx context.Context, pin string, questionIndex int) (*dtos.WSEventDto, error)
 	SubmitAnswer(ctx context.Context, pin string, userID uint, optionID uint) (*dtos.StudentAnswerResponseDto, *dtos.LiveStatsPayload, error)
+	GetCurrentQuestion(ctx context.Context, pin string) (*dtos.QuestionPayload, error)
+	GetLiveStats(ctx context.Context, pin string) (*dtos.LiveStatsPayload, error)
+	HasUserAnswered(ctx context.Context, pin string, userID uint) (bool, error)
+	GetRoundResult(ctx context.Context, pin string) (*dtos.RoundResultPayload, error)
+	StoreGameData(ctx context.Context, pin string) error
 }
 
 type gameUseCase struct {
@@ -138,9 +144,13 @@ func (u *gameUseCase) JoinGame(ctx context.Context, pin string, userID uint) (*d
 		return nil, nil, errors.New("game session not found")
 	}
 
+	inLobby, err := u.gameRepo.IsPlayerInLobby(ctx, pin, userID)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	if state.Status != "waiting" {
-		inLobby, err := u.gameRepo.IsPlayerInLobby(ctx, pin, userID)
-		if err != nil || !inLobby {
+		if !inLobby {
 			return nil, nil, errors.New("game has already started")
 		}
 	}
@@ -206,15 +216,20 @@ func (u *gameUseCase) JoinGame(ctx context.Context, pin string, userID uint) (*d
 		QuestionEndsAt:    state.QuestionEndsAt.UnixMilli(),
 	}
 
-	return gameInfo, &dtos.LobbyUpdatePayload{
-		PlayerCount: len(players),
-		Players:     players,
-		NewPlayer: &dtos.PlayerDto{
-			UserID:    user.ID,
-			Name:      playerData.Name,
-			AvatarURL: playerData.AvatarURL,
-		},
-	}, nil
+	var lobbyUpdate *dtos.LobbyUpdatePayload
+	if !inLobby {
+		lobbyUpdate = &dtos.LobbyUpdatePayload{
+			PlayerCount: len(players),
+			Players:     players,
+			NewPlayer: &dtos.PlayerDto{
+				UserID:    user.ID,
+				Name:      playerData.Name,
+				AvatarURL: playerData.AvatarURL,
+			},
+		}
+	}
+
+	return gameInfo, lobbyUpdate, nil
 }
 
 func (u *gameUseCase) LeaveGame(ctx context.Context, pin string, userID uint) (*dtos.LobbyUpdatePayload, error) {
@@ -432,7 +447,7 @@ func (u *gameUseCase) NextStep(ctx context.Context, pin string, hostID uint) (*d
 			Payload: dtos.RoundResultPayload{
 				CorrectOptionID: correctOptionID,
 				Stats:           stats,
-				Leaderboard: top5,
+				Leaderboard:     top5,
 			},
 		}, nil
 
@@ -445,6 +460,9 @@ func (u *gameUseCase) NextStep(ctx context.Context, pin string, hostID uint) (*d
 			}); err != nil {
 				return nil, err
 			}
+
+			// Log Data for future saving process
+			u.StoreGameData(ctx, pin)
 
 			top3 := u.getLeaderboardDtos(ctx, pin, 3)
 			var winner dtos.PlayerDto
@@ -583,15 +601,6 @@ func (u *gameUseCase) SubmitAnswer(ctx context.Context, pin string, userID uint,
 		return nil, nil, errors.New("question is not open for answers")
 	}
 
-	// 2. Prevent Duplicate Answer
-	isNew, err := u.gameRepo.MarkUserAnswered(ctx, pin, state.CurrentQuestion, userID)
-	if err != nil {
-		return nil, nil, err
-	}
-	if !isNew {
-		return nil, nil, errors.New("already answered this question")
-	}
-
 	// 3. Calculate Time Taken
 	now := time.Now()
 	timeTaken := now.Sub(state.QuestionStartedAt).Seconds()
@@ -621,6 +630,15 @@ func (u *gameUseCase) SubmitAnswer(ctx context.Context, pin string, userID uint,
 	}
 	if selectedOption == nil {
 		return nil, nil, errors.New("invalid option id")
+	}
+
+	// 2. Prevent Duplicate Answer
+	isNew, err := u.gameRepo.MarkUserAnswered(ctx, pin, state.CurrentQuestion, userID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if !isNew {
+		return nil, nil, errors.New("already answered this question")
 	}
 
 	points := 0
@@ -790,4 +808,150 @@ func (u *gameUseCase) NextQuestion(ctx context.Context, pin string, hostID uint)
 		PointsMultiplier: currentQ.PointsMultiplier,
 		Options:          options,
 	}, nil
+}
+
+func (u *gameUseCase) GetCurrentQuestion(ctx context.Context, pin string) (*dtos.QuestionPayload, error) {
+	state, err := u.gameRepo.GetGameState(ctx, pin)
+	if err != nil {
+		return nil, err
+	}
+
+	quizDataJSON, err := u.gameRepo.GetQuizData(ctx, pin)
+	if err != nil {
+		return nil, err
+	}
+	var quizSnapshot dtos.GetQuizResponseDto
+	if err := json.Unmarshal([]byte(quizDataJSON), &quizSnapshot); err != nil {
+		return nil, err
+	}
+
+	if state.CurrentQuestion < 1 || state.CurrentQuestion > len(quizSnapshot.Questions) {
+		return nil, errors.New("invalid question index")
+	}
+	currentQ := quizSnapshot.Questions[state.CurrentQuestion-1]
+
+	var options []dtos.WSQuizOptionDto
+	for _, opt := range currentQ.Options {
+		var label string
+		switch opt.OrderIndex {
+		case 1:
+			label = "A"
+		case 2:
+			label = "B"
+		case 3:
+			label = "C"
+		case 4:
+			label = "D"
+		}
+		options = append(options, dtos.WSQuizOptionDto{
+			ID:         opt.ID,
+			OptionText: opt.OptionText,
+			Label:      label,
+		})
+	}
+
+	return &dtos.QuestionPayload{
+		QuestionIndex:    state.CurrentQuestion,
+		TotalQuestions:   state.TotalQuestions,
+		TimeLimitSeconds: currentQ.TimeLimitSeconds,
+		QuestionText:     currentQ.QuestionText,
+		PointsMultiplier: currentQ.PointsMultiplier,
+		Options:          options,
+	}, nil
+}
+
+func (u *gameUseCase) GetLiveStats(ctx context.Context, pin string) (*dtos.LiveStatsPayload, error) {
+	state, err := u.gameRepo.GetGameState(ctx, pin)
+	if err != nil {
+		return nil, err
+	}
+	return &dtos.LiveStatsPayload{
+		TotalPlayers:  state.TotalPlayers,
+		OptionACount:  state.OptionACount,
+		OptionBCount:  state.OptionBCount,
+		OptionCCount:  state.OptionCCount,
+		OptionDCount:  state.OptionDCount,
+		AnsweredCount: state.OptionACount + state.OptionBCount + state.OptionCCount + state.OptionDCount,
+		OptionAID:     state.OptionAID,
+		OptionBID:     state.OptionBID,
+		OptionCID:     state.OptionCID,
+		OptionDID:     state.OptionDID,
+	}, nil
+}
+
+func (u *gameUseCase) HasUserAnswered(ctx context.Context, pin string, userID uint) (bool, error) {
+	state, err := u.gameRepo.GetGameState(ctx, pin)
+	if err != nil {
+		return false, err
+	}
+	// Assuming gameRepo has a method to check set membership without adding
+	return u.gameRepo.HasUserAnswered(ctx, pin, state.CurrentQuestion, userID)
+}
+
+func (u *gameUseCase) GetRoundResult(ctx context.Context, pin string) (*dtos.RoundResultPayload, error) {
+	state, err := u.gameRepo.GetGameState(ctx, pin)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get Correct Option & Stats
+	quizDataJSON, err := u.gameRepo.GetQuizData(ctx, pin)
+	if err != nil {
+		return nil, err
+	}
+	var quizSnapshot dtos.GetQuizResponseDto
+	if err := json.Unmarshal([]byte(quizDataJSON), &quizSnapshot); err != nil {
+		return nil, err
+	}
+
+	if state.CurrentQuestion < 1 || state.CurrentQuestion > len(quizSnapshot.Questions) {
+		return nil, errors.New("invalid question index")
+	}
+	currentQ := quizSnapshot.Questions[state.CurrentQuestion-1]
+
+	var correctOptionID uint
+	for _, o := range currentQ.Options {
+		if o.IsCorrect {
+			correctOptionID = o.ID
+			break
+		}
+	}
+
+	stats := dtos.LiveStatsPayload{
+		TotalPlayers:  state.TotalPlayers,
+		OptionACount:  state.OptionACount,
+		OptionBCount:  state.OptionBCount,
+		OptionCCount:  state.OptionCCount,
+		OptionDCount:  state.OptionDCount,
+		AnsweredCount: state.OptionACount + state.OptionBCount + state.OptionCCount + state.OptionDCount,
+		OptionAID:     state.OptionAID,
+		OptionBID:     state.OptionBID,
+		OptionCID:     state.OptionCID,
+		OptionDID:     state.OptionDID,
+	}
+
+	top5 := u.getLeaderboardDtos(ctx, pin, 5)
+	return &dtos.RoundResultPayload{
+		CorrectOptionID: correctOptionID,
+		Stats:           stats,
+		Leaderboard:     top5,
+	}, nil
+}
+
+func (u *gameUseCase) StoreGameData(ctx context.Context, pin string) error {
+	state, err := u.gameRepo.GetGameState(ctx, pin)
+	if err != nil {
+		log.Println("Failed to get game state for logging:", err)
+		return err
+	}
+
+	quizData, _ := u.gameRepo.GetQuizData(ctx, pin)
+
+	log.Printf("=== GAME OVER STORE DATA ===")
+	log.Printf("PIN: %s", pin)
+	log.Printf("Final State: %+v", state)
+	log.Printf("Quiz Data: %s", quizData)
+	log.Printf("============================")
+
+	return nil
 }

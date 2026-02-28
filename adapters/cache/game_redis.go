@@ -170,6 +170,19 @@ func (r *gameRedisRepository) MarkUserAnswered(ctx context.Context, pin string, 
 	return added > 0, nil
 }
 
+func (r *gameRedisRepository) HasUserAnswered(ctx context.Context, pin string, questionIndex int, userID uint) (bool, error) {
+	// Ensure this key pattern matches the one used in MarkUserAnswered
+	key := fmt.Sprintf("game:%s:answered:%d", pin, questionIndex)
+
+	// SIsMember returns true if the member exists in the set
+	exists, err := r.client.SIsMember(ctx, key, userID).Result()
+	if err != nil {
+		return false, err
+	}
+
+	return exists, nil
+}
+
 func (r *gameRedisRepository) SaveAnswerDetail(ctx context.Context, pin string, questionIndex int, userID uint, answerLog *entities.AnswerLog) error {
 	key := fmt.Sprintf("game:%s:answers:%d", pin, questionIndex)
 
