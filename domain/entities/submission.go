@@ -1,6 +1,10 @@
 package entities
 
-import "gorm.io/gorm"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 type Submission struct {
 	gorm.Model
@@ -12,6 +16,8 @@ type Submission struct {
 	QuizGameLog     *QuizGameLog  `json:"quiz_game_log" gorm:"foreignKey:QuizLogID"`
 	StudentComment  string        `json:"student_comment" gorm:"type:text"`
 	Score           *int          `json:"score" gorm:"comment:e.g. 85/100"`
+	SubmittedAt     *time.Time    `json:"submitted_at"`
+	IsLate          bool          `json:"is_late" gorm:"default:false"`
 	TeacherFeedback string        `json:"teacher_feedback" gorm:"type:text"`
 	Status          string        `json:"status" gorm:"default:submitted;type:varchar(50);comment:submitted, graded, returned, late, draft"`
 	Attachments     []Attachment  `json:"attachments" gorm:"polymorphic:Owner;"`

@@ -30,11 +30,13 @@ type GameUseCase interface {
 }
 
 type gameUseCase struct {
-	gameRepo          repositories.GameRepository
-	quizGameLogRepo   repositories.QuizGameLogRepository
-	classMaterialRepo repositories.ClassMaterialRepository
-	classRepo         repositories.ClassRepository
-	userRepo          repositories.UserRepository
+	gameRepo                repositories.GameRepository
+	quizGameLogRepo         repositories.QuizGameLogRepository
+	classMaterialRepo       repositories.ClassMaterialRepository
+	classRepo               repositories.ClassRepository
+	userRepo                repositories.UserRepository
+	submissionRepo          repositories.SubmissionRepository
+	quizStudentResponseRepo repositories.QuizStudentResponseRepository
 }
 
 func NewGameUseCase(
@@ -43,13 +45,17 @@ func NewGameUseCase(
 	classMaterialRepo repositories.ClassMaterialRepository,
 	classRepo repositories.ClassRepository,
 	userRepo repositories.UserRepository,
+	submissionRepo repositories.SubmissionRepository,
+	quizStudentResponseRepo repositories.QuizStudentResponseRepository,
 ) GameUseCase {
 	return &gameUseCase{
-		gameRepo:          gameRepo,
-		quizGameLogRepo:   quizGameLogRepo,
-		classMaterialRepo: classMaterialRepo,
-		classRepo:         classRepo,
-		userRepo:          userRepo,
+		gameRepo:                gameRepo,
+		quizGameLogRepo:         quizGameLogRepo,
+		classMaterialRepo:       classMaterialRepo,
+		classRepo:               classRepo,
+		userRepo:                userRepo,
+		submissionRepo:          submissionRepo,
+		quizStudentResponseRepo: quizStudentResponseRepo,
 	}
 }
 
@@ -945,13 +951,116 @@ func (u *gameUseCase) StoreGameData(ctx context.Context, pin string) error {
 		return err
 	}
 
-	quizData, _ := u.gameRepo.GetQuizData(ctx, pin)
+	// 1. Get Quiz Data (Snapshot)
+	quizDataJSON, err := u.gameRepo.GetQuizData(ctx, pin)
+	if err != nil {
+		return err
+	}
+	var quizSnapshot dtos.GetQuizResponseDto
+	json.Unmarshal([]byte(quizDataJSON), &quizSnapshot)
 
-	log.Printf("=== GAME OVER STORE DATA ===")
-	log.Printf("PIN: %s", pin)
-	log.Printf("Final State: %+v", state)
-	log.Printf("Quiz Data: %s", quizData)
-	log.Printf("============================")
+	// 2. Get Class Material & Game Log
+	material, err := u.classMaterialRepo.GetByID(state.ClassMaterialID)
+	if err != nil {
+		return err
+	}
+
+	logs, err := u.quizGameLogRepo.GetByClassMaterialID(material.ID)
+	if err != nil || len(logs) == 0 {
+		return errors.New("game log not found")
+	}
+	gameLog := logs[0]
+
+	// 3. Update Game Log
+	now := time.Now()
+	gameLog.Status = "finished"
+	gameLog.FinishedAt = &now
+	if err := u.quizGameLogRepo.Update(gameLog); err != nil {
+		return err
+	}
+
+	// 4. Calculate Max Possible Game Score (Sum of 1000 * Multiplier for all questions)
+	var maxGameScore float64 = 0
+	for _, q := range quizSnapshot.Questions {
+		maxGameScore += float64(1000 * q.PointsMultiplier)
+	}
+	if maxGameScore == 0 {
+		maxGameScore = 1 // Avoid division by zero
+	}
+
+	// 5. Process Players
+	playerIDs, err := u.gameRepo.GetLobbyPlayers(ctx, pin)
+	if err != nil {
+		return err
+	}
+
+	for _, userID := range playerIDs {
+		// A. Get Player Stats
+		pData, err := u.gameRepo.GetPlayerData(ctx, pin, userID)
+		if err != nil {
+			continue
+		}
+
+		// B. Create/Update Submission
+		// Formula: (PlayerScore / MaxGameScore) * MaterialPoints
+		rawScore := float64(pData.Score)
+		var materialPoints float64
+		if material.Points != nil {
+			materialPoints = float64(*material.Points)
+		}
+
+		finalScore := (rawScore / maxGameScore) * materialPoints
+		finalScoreInt := int(finalScore)
+
+		// Check if late
+		isLate := false
+		if material.DueAt != nil && now.After(*material.DueAt) {
+			isLate = true
+		}
+
+		submission := &entities.Submission{
+			ClassMaterialID: material.ID,
+			UserID:          userID,
+			Score:           &finalScoreInt,
+			SubmittedAt:     &now,
+			IsLate:          isLate,
+		}
+
+		existingSub, _ := u.submissionRepo.GetByClassMaterialIDAndStudentID(material.ID, userID)
+		if existingSub != nil {
+			existingSub.Score = &finalScoreInt
+			existingSub.SubmittedAt = &now
+			existingSub.IsLate = isLate
+			u.submissionRepo.Update(existingSub)
+		} else {
+			u.submissionRepo.Create(submission)
+		}
+
+		// C. Create Student Response Logs
+		for i, q := range quizSnapshot.Questions {
+			qIndex := i + 1
+			// Assuming GetAnswerLog exists in GameRepository to fetch specific answer
+			answerLog, err := u.gameRepo.GetAnswerLog(ctx, pin, qIndex, userID)
+
+			response := &entities.QuizStudentResponse{
+				QuizGameLogID: gameLog.ID,
+				UserID:        userID,
+				QuestionID:    q.ID,
+				IsCorrect:     false,
+				Points:        0,
+				TimeTaken:     0,
+			}
+
+			if err == nil && answerLog != nil {
+				response.OptionID = &answerLog.OptionID
+				response.IsCorrect = answerLog.IsCorrect
+				response.Points = answerLog.Points
+				response.TimeTaken = answerLog.TimeMs
+			}
+
+			u.quizStudentResponseRepo.Create(response)
+		}
+	}
 
 	return nil
 }

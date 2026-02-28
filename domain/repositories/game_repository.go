@@ -36,6 +36,7 @@ type GameRepository interface {
 	MarkUserAnswered(ctx context.Context, pin string, questionIndex int, userID uint) (bool, error)
 	HasUserAnswered(ctx context.Context, pin string, questionIndex int, userID uint) (bool, error)
 	SaveAnswerDetail(ctx context.Context, pin string, questionIndex int, userID uint, answerLog *entities.AnswerLog) error
+	GetAnswerLog(ctx context.Context, pin string, questionIndex int, userID uint) (*entities.AnswerLog, error)
 
 	// 5. Leaderboard (ZSET)
 	UpdateScore(ctx context.Context, pin string, userID uint, totalScore float64) error

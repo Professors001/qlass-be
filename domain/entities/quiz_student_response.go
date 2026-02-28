@@ -1,17 +1,15 @@
 package entities
 
-import "gorm.io/gorm"
+import "time"
 
 type QuizStudentResponse struct {
-	gorm.Model
-
-	QuizGameLogID    uint         `json:"quiz_game_log_id" gorm:"not null;index"`
-	QuizGameLog      *QuizGameLog `json:"quiz_game_log" gorm:"foreignKey:QuizGameLogID"`
-	UserID           uint         `json:"user_id" gorm:"not null;index"`
-	User             *User        `json:"user" gorm:"foreignKey:UserID"`
-	QuestionID       uint         `json:"question_id" gorm:"comment:ID from Snapshot"`
-	SelectedOptionID uint         `json:"selected_option_id" gorm:"comment:ID from Snapshot"`
-	IsCorrect        bool         `json:"is_correct"`
-	TimeTakenSeconds int          `json:"time_taken_seconds"`
-	PointsEarned     int          `json:"points_earned"`
+	ID            uint      `gorm:"primaryKey" json:"id"`
+	QuizGameLogID uint      `gorm:"index" json:"quiz_game_log_id"`
+	UserID        uint      `gorm:"index" json:"user_id"`
+	QuestionID    uint      `json:"question_id"`
+	OptionID      *uint     `json:"option_id"` // Nullable if they didn't answer
+	IsCorrect     bool      `json:"is_correct"`
+	TimeTaken     int       `json:"time_taken"` // In milliseconds
+	Points        int       `json:"points"`
+	CreatedAt     time.Time `json:"created_at"`
 }

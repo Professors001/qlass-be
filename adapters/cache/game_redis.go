@@ -198,6 +198,23 @@ func (r *gameRedisRepository) SaveAnswerDetail(ctx context.Context, pin string, 
 	return r.client.Expire(ctx, key, TTL_GAME).Err()
 }
 
+func (r *gameRedisRepository) GetAnswerLog(ctx context.Context, pin string, questionIndex int, userID uint) (*entities.AnswerLog, error) {
+	key := fmt.Sprintf("game:%s:answers:%d", pin, questionIndex)
+	val, err := r.client.HGet(ctx, key, fmt.Sprintf("%d", userID)).Result()
+	if err != nil {
+		if err == redis.Nil {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	var answerLog entities.AnswerLog
+	if err := json.Unmarshal([]byte(val), &answerLog); err != nil {
+		return nil, err
+	}
+	return &answerLog, nil
+}
+
 // --- 5. Leaderboard (ZSET) ---
 
 func (r *gameRedisRepository) UpdateScore(ctx context.Context, pin string, userID uint, totalScore float64) error {
