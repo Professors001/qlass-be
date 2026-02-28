@@ -2,10 +2,10 @@ package dtos
 
 type CreateClassRequestDto struct {
 	Name        string `json:"name" binding:"required"`
-	Description string `json:"description" binding:"required"`
+	Description string `json:"description"`
 	Section     string `json:"section" binding:"required"`
 	Term        string `json:"term" binding:"required"`
-	Room        string `json:"room" binding:"required"`
+	Room        string `json:"room"`
 }
 
 type CreateClassResponseDto struct {

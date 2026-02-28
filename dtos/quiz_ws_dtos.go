@@ -19,7 +19,7 @@ type JoinGameRequestDto struct {
 
 type JoinGameResponseDto struct {
 	Message string `json:"message"`
-	Role    string `json:"role"`  // "host" or "player"
+	Role    string `json:"role"` // "host" or "player"
 }
 
 // Used by Host to control the game flow
@@ -98,10 +98,14 @@ type LiveStatsPayload struct {
 	TotalPlayers  int `json:"total_players"`
 	AnsweredCount int `json:"answered_count"`
 	// Simple bar chart data
-	OptionACount int `json:"option_a_count"`
-	OptionBCount int `json:"option_b_count"`
-	OptionCCount int `json:"option_c_count"`
-	OptionDCount int `json:"option_d_count"`
+	OptionACount int  `json:"option_a_count"`
+	OptionBCount int  `json:"option_b_count"`
+	OptionCCount int  `json:"option_c_count"`
+	OptionDCount int  `json:"option_d_count"`
+	OptionAID    uint `json:"option_a_id"`
+	OptionBID    uint `json:"option_b_id"`
+	OptionCID    uint `json:"option_c_id"`
+	OptionDID    uint `json:"option_d_id"`
 }
 
 // --- RESULT PHASE (State: "revealed") ---

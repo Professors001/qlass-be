@@ -5,7 +5,7 @@ meta {
 }
 
 ws {
-  url: ws://localhost:8080/ws?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJyb2xlIjoiYWRtaW4iLCJleHAiOjE3NzIyOTY3OTF9.UNe0PbtwqkNcGxXiLBP20fV763u_dQzObNPvvKpMC28&pin=869804
+  url: ws://localhost:8080/ws?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJyb2xlIjoiYWRtaW4iLCJleHAiOjE3NzI1MzE4NTd9.mrk85ATDymzI9uxlahwiCc7MMtMmtK7tqMKn9MyMxdk&pin=116417
   body: ws
   auth: none
 }
@@ -15,10 +15,8 @@ body:ws {
   type: json
   content: '''
     {
-      "type": "send_message",
-      "payload": {
-        "message": "Hi_3"
-      }
+      "type": "student_answer",
+      "payload": { "option_id": 19 }
     }
   '''
 }

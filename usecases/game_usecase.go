@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"math/rand"
 	"qlass-be/domain/entities"
 	"qlass-be/domain/repositories"
@@ -18,7 +19,7 @@ type GameUseCase interface {
 	LeaveGame(ctx context.Context, pin string, userID uint) (*dtos.LobbyUpdatePayload, error)
 	StartGame(ctx context.Context, pin string, hostID uint) error
 	NextStep(ctx context.Context, pin string, hostID uint) (*dtos.WSEventDto, error)
-	TimeoutQuestion(ctx context.Context, pin string) (*dtos.WSEventDto, error)
+	TimeoutQuestion(ctx context.Context, pin string, questionIndex int) (*dtos.WSEventDto, error)
 	SubmitAnswer(ctx context.Context, pin string, userID uint, optionID uint) (*dtos.StudentAnswerResponseDto, *dtos.LiveStatsPayload, error)
 }
 
@@ -393,10 +394,44 @@ func (u *gameUseCase) NextStep(ctx context.Context, pin string, hostID uint) (*d
 			return nil, err
 		}
 
+		// Get Correct Option & Stats
+		quizDataJSON, err := u.gameRepo.GetQuizData(ctx, pin)
+		if err != nil {
+			return nil, err
+		}
+		var quizSnapshot dtos.GetQuizResponseDto
+		if err := json.Unmarshal([]byte(quizDataJSON), &quizSnapshot); err != nil {
+			return nil, err
+		}
+		currentQ := quizSnapshot.Questions[state.CurrentQuestion-1]
+
+		var correctOptionID uint
+		for _, o := range currentQ.Options {
+			if o.IsCorrect {
+				correctOptionID = o.ID
+				break
+			}
+		}
+
+		stats := dtos.LiveStatsPayload{
+			TotalPlayers:  state.TotalPlayers,
+			OptionACount:  state.OptionACount,
+			OptionBCount:  state.OptionBCount,
+			OptionCCount:  state.OptionCCount,
+			OptionDCount:  state.OptionDCount,
+			AnsweredCount: state.OptionACount + state.OptionBCount + state.OptionCCount + state.OptionDCount,
+			OptionAID:     state.OptionAID,
+			OptionBID:     state.OptionBID,
+			OptionCID:     state.OptionCID,
+			OptionDID:     state.OptionDID,
+		}
+
 		top5 := u.getLeaderboardDtos(ctx, pin, 5)
 		return &dtos.WSEventDto{
 			Type: "ROUND_RESULT",
 			Payload: dtos.RoundResultPayload{
+				CorrectOptionID: correctOptionID,
+				Stats:           stats,
 				Leaderboard: top5,
 			},
 		}, nil
@@ -449,10 +484,15 @@ func (u *gameUseCase) NextStep(ctx context.Context, pin string, hostID uint) (*d
 	return nil, errors.New("unknown game state")
 }
 
-func (u *gameUseCase) TimeoutQuestion(ctx context.Context, pin string) (*dtos.WSEventDto, error) {
+func (u *gameUseCase) TimeoutQuestion(ctx context.Context, pin string, questionIndex int) (*dtos.WSEventDto, error) {
 	state, err := u.gameRepo.GetGameState(ctx, pin)
 	if err != nil {
 		return nil, err
+	}
+
+	// Ensure the timeout is for the current question (prevents stale timers from closing new questions)
+	if state.CurrentQuestion != questionIndex {
+		return nil, nil
 	}
 
 	// Only act if we are still in the answering state
@@ -491,6 +531,10 @@ func (u *gameUseCase) finishQuestion(ctx context.Context, pin string, state *ent
 		OptionCCount:  state.OptionCCount,
 		OptionDCount:  state.OptionDCount,
 		AnsweredCount: state.OptionACount + state.OptionBCount + state.OptionCCount + state.OptionDCount,
+		OptionAID:     state.OptionAID,
+		OptionBID:     state.OptionBID,
+		OptionCID:     state.OptionCID,
+		OptionDID:     state.OptionDID,
 	}
 
 	return &dtos.WSEventDto{
@@ -582,13 +626,16 @@ func (u *gameUseCase) SubmitAnswer(ctx context.Context, pin string, userID uint,
 	points := 0
 	if selectedOption.IsCorrect {
 		ratio := timeTaken / float64(question.TimeLimitSeconds)
+
 		if ratio > 1 {
 			ratio = 1
 		}
-		// Score = Base(1000) * Multiplier * (1 - ratio/2)
-		// Instant = 1000, End of time = 500
-		baseScore := 1000.0 * (1 - (ratio / 2))
-		points = int(baseScore) * question.PointsMultiplier
+
+		baseScore := (1 - (ratio / 2)) * 1000.0
+
+		roundedScore := math.Round(baseScore)
+
+		points = int(roundedScore) * question.PointsMultiplier
 	}
 
 	// 6. Update Player Stats
@@ -648,6 +695,10 @@ func (u *gameUseCase) SubmitAnswer(ctx context.Context, pin string, userID uint,
 			OptionCCount:  updatedState.OptionCCount,
 			OptionDCount:  updatedState.OptionDCount,
 			AnsweredCount: updatedState.OptionACount + updatedState.OptionBCount + updatedState.OptionCCount + updatedState.OptionDCount,
+			OptionAID:     updatedState.OptionAID,
+			OptionBID:     updatedState.OptionBID,
+			OptionCID:     updatedState.OptionCID,
+			OptionDID:     updatedState.OptionDID,
 		}
 	}
 

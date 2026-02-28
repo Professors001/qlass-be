@@ -140,11 +140,11 @@ func NextHandler(event Event, c *Client) error {
 	// Auto-Next Logic: If we just started a question, start a timer
 	if wsEvent.Type == "NEXT_QUESTION" {
 		if payload, ok := wsEvent.Payload.(dtos.QuestionPayload); ok {
-			go func(pin string, duration int) {
+			go func(pin string, duration int, questionIndex int) {
 				time.Sleep(time.Duration(duration) * time.Second)
 
 				// Trigger timeout
-				timeoutEvent, err := c.manager.gameUseCase.TimeoutQuestion(context.Background(), pin)
+				timeoutEvent, err := c.manager.gameUseCase.TimeoutQuestion(context.Background(), pin, questionIndex)
 				if err != nil {
 					log.Println("Timeout error:", err)
 					return
@@ -157,7 +157,7 @@ func NextHandler(event Event, c *Client) error {
 						Payload: payloadBytes,
 					})
 				}
-			}(c.GamePIN, payload.TimeLimitSeconds)
+			}(c.GamePIN, payload.TimeLimitSeconds, payload.QuestionIndex)
 		}
 	}
 
