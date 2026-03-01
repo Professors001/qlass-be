@@ -398,6 +398,7 @@ func (u *gameUseCase) NextStep(ctx context.Context, pin string, hostID uint) (*d
 				TotalQuestions:   state.TotalQuestions,
 				TimeLimitSeconds: currentQ.TimeLimitSeconds,
 				QuestionText:     currentQ.QuestionText,
+				ImageURL:         currentQ.MediaAttachment.FileURL,
 				PointsMultiplier: currentQ.PointsMultiplier,
 				Options:          options,
 			},
