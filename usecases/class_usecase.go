@@ -18,7 +18,9 @@ type ClassUseCase interface {
 	GetAllMyClasses(ctx context.Context, userID uint) ([]dtos.ClassDetailsDto, error)
 	EnrollStudent(ctx context.Context, inviteCode string, studentID uint) error
 	GetEnrolledStudentsByClassID(ctx context.Context, classID uint) (*dtos.SummaryEnrolledStudentsDto, error)
-	GetClassByID(ctx context.Context, classID uint, userID uint) (*dtos.ClassDetailsDto, error)
+	GetClassByIDAndUserID(classID uint, userID uint) (*dtos.ClassDetailsDto, error)
+	GetClassByID(classID uint) (*entities.Class, error)
+	UpdateClass(req *dtos.UpdateClassRequestDto, userID uint) error
 }
 
 type classUseCase struct {
@@ -35,10 +37,7 @@ func NewClassUseCase(classRepo repositories.ClassRepository, enrollRepo reposito
 
 func (c *classUseCase) CreateClass(ctx context.Context, req *dtos.CreateClassRequestDto, ownerID uint) (*dtos.CreateClassResponseDto, error) {
 	// 1. Generate Invite Code
-	inviteCode, err := c.generateUniqueInviteCode(ctx)
-	if err != nil {
-		return nil, err
-	}
+	inviteCode := utils.GenerateRandomString(6)
 
 	// 2. Map DTO to Entity
 	class := &entities.Class{
@@ -159,7 +158,7 @@ func (c *classUseCase) GetEnrolledStudentsByClassID(ctx context.Context, classID
 	}, nil
 }
 
-func (c *classUseCase) GetClassByID(ctx context.Context, classID uint, userID uint) (*dtos.ClassDetailsDto, error) {
+func (c *classUseCase) GetClassByIDAndUserID(classID uint, userID uint) (*dtos.ClassDetailsDto, error) {
 
 	enrollments, err := c.classRepo.GetByUserID(userID)
 	if err != nil {
@@ -186,19 +185,42 @@ func (c *classUseCase) GetClassByID(ctx context.Context, classID uint, userID ui
 	return &classDetailsDto, nil
 }
 
-func (c *classUseCase) generateUniqueInviteCode(_ context.Context) (string, error) {
-	const maxRetries = 10
-	const codeLength = 6
+func (c *classUseCase) GetClassByID(classID uint) (*entities.Class, error) {
+	class, err := c.classRepo.GetByID(classID)
 
-	for i := 0; i < maxRetries; i++ {
-		code := utils.GenerateRandomString(codeLength)
-
-		_, err := c.classRepo.GetByInviteCode(code)
-		if err != nil {
-			return code, nil
-		}
-
+	if err != nil {
+		return nil, err
 	}
 
-	return "", errors.New("failed to generate unique invite code: maximum retries reached")
+	if class == nil {
+		return nil, errors.New("class not found")
+	}
+
+	return class, nil
+}
+
+func (c *classUseCase) UpdateClass(req *dtos.UpdateClassRequestDto, userID uint) error {
+	class, err := c.classRepo.GetByID(req.ClassId)
+
+	if err != nil {
+		return err
+	}
+
+	if class == nil {
+		return errors.New("class not found")
+	}
+
+	if class.OwnerID != userID {
+		return errors.New("unauthorized")
+	}
+
+	newClass := transforms.UpdateClassReqToClassEntity(req, class)
+
+	err = c.classRepo.Update(&newClass)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

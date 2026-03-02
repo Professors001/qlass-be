@@ -1,11 +1,11 @@
 meta {
-  name: CreateClass
+  name: Update Class
   type: http
-  seq: 1
+  seq: 7
 }
 
-post {
-  url: {{base_url}}/classes
+put {
+  url: {{base_url}}/classes/update
   body: json
   auth: bearer
 }
@@ -16,11 +16,9 @@ auth:bearer {
 
 body:json {
   {
-    "name": "Introduction to Computer Science",
-    "description": "Basic concepts of programming and algorithms.",
-    "section": "1",
-    "term": "1/2025",
-    "room": "LH-201"
+    "class_id": 1,
+    "name": "Introduction to Com Science",
+    "hide": true
   }
 }
 

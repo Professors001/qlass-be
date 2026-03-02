@@ -198,11 +198,59 @@ func (h *ClassHandler) GetClassByID(c *gin.Context) {
 		return
 	}
 
-	res, err := h.UseCase.GetClassByID(c.Request.Context(), uint(classID), claims.UserId)
+	res, err := h.UseCase.GetClassByIDAndUserID(uint(classID), claims.UserId)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, dtos.GlobalErrorResponse{Error: "INTERNAL_ERROR", Message: err.Error()})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": res})
+}
+
+func (h *ClassHandler) UpdateClass(c *gin.Context) {
+	val, exists := c.Get("currentUser")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, dtos.GlobalErrorResponse{
+			Error:   "UNAUTHORIZED",
+			Message: "User context not found",
+		})
+		return
+	}
+
+	claims, ok := val.(*middleware.JWTCustomClaims)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, dtos.GlobalErrorResponse{
+			Error:   "INTERNAL_ERROR",
+			Message: "Failed to cast user context",
+		})
+		return
+	}
+
+	var req dtos.UpdateClassRequestDto
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, dtos.GlobalErrorResponse{Error: "BAD_REQUEST", Message: err.Error()})
+		return
+	}
+
+	err := h.UseCase.UpdateClass(&req, claims.UserId)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dtos.GlobalErrorResponse{
+			Error:   "INTERNAL_ERROR",
+			Message: err.Error(),
+		})
+		return
+	}
+
+	class, err := h.UseCase.GetClassByIDAndUserID(req.ClassId, claims.UserId)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dtos.GlobalErrorResponse{
+			Error:   "INTERNAL_ERROR",
+			Message: err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"data": class})
 }

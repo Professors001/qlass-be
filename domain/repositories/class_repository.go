@@ -7,4 +7,5 @@ type ClassRepository interface {
 	GetByID(id uint) (*entities.Class, error)
 	GetByInviteCode(code string) (*entities.Class, error)
 	GetByUserID(userID uint) ([]entities.ClassEnrollment, error)
+	Update(class *entities.Class) error
 }

@@ -58,3 +58,13 @@ type GetEnrolledStudentsResponseDto struct {
 	Message string            `json:"message"`
 	Data    StudentDetailsDto `json:"data"`
 }
+
+type UpdateClassRequestDto struct {
+	ClassId     uint   `json:"class_id" binding:"required"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Section     string `json:"section"`
+	Term        string `json:"term"`
+	Room        string `json:"room"`
+	Hide        bool   `json:"hide"`
+}

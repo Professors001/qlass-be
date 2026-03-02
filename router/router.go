@@ -97,6 +97,7 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	classRouter.POST("/join", middleware.AuthorizeJWT(jwtService), handler.ClassHandler.EnrollStudent)
 	classRouter.GET("/:id/students", middleware.AuthorizeJWT(jwtService), handler.ClassHandler.GetEnrolledStudents)
 	classRouter.GET("/invite/:code", handler.ClassHandler.GetClassDetailsByInviteCode)
+	classRouter.PUT("/update", middleware.AuthorizeJWT(jwtService), handler.ClassHandler.UpdateClass)
 
 	// Attachments
 	attachmentRouter := r.Group("/attachments")

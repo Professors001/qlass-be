@@ -52,3 +52,11 @@ func (r *postgresClassRepository) GetByUserID(userID uint) ([]entities.ClassEnro
 	}
 	return enrollments, nil
 }
+
+func (r *postgresClassRepository) Update(class *entities.Class) error {
+	// GORM handles the SQL Update automatically
+	if err := r.db.Save(class).Error; err != nil {
+		return err
+	}
+	return nil
+}
