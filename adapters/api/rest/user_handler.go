@@ -203,3 +203,36 @@ func (h *UserHandler) ForgetPasswordStep2(c *gin.Context) {
 
 	c.JSON(http.StatusOK, res)
 }
+
+func (h *UserHandler) AdminUpdateuser(c *gin.Context) {
+	val, exists := c.Get("currentUser")
+	if !exists {
+		utils.SendError(c, http.StatusUnauthorized, "UNAUTHORIZED", "No user found in context")
+		return
+	}
+
+	claims, ok := val.(*middleware.JWTCustomClaims)
+	if !ok {
+		utils.SendError(c, http.StatusUnauthorized, "UNAUTHORIZED", "Invalid user context")
+		return
+	}
+
+	if claims.Role != "admin" {
+		utils.SendError(c, http.StatusForbidden, "FORBIDDEN", "Only admin can perform this action")
+		return
+	}
+
+	var req dtos.AdminUpdateUserRequestDto
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.SendError(c, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+		return
+	}
+
+	err := h.UseCase.AdminUpdateUser(&req)
+	if err != nil {
+		utils.SendError(c, http.StatusInternalServerError, "UPDATE_FAILED", err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "User updated successfully"})
+}

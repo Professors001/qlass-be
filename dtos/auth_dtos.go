@@ -108,3 +108,13 @@ type ForgetPasswordStep2RequestDto struct {
 type ForgetPasswordStep2ResponseDto struct {
 	Message string `json:"message"`
 }
+
+type AdminUpdateUserRequestDto struct {
+	UserID       uint   `json:"user_id" binding:"required"`
+	UniversityID string `json:"university_id"`
+	Email        string `json:"email"`
+	NewPassword  string `json:"new_password"`
+	FirstName    string `json:"first_name"`
+	LastName     string `json:"last_name"`
+	Role         string `json:"role"`
+}

@@ -29,6 +29,7 @@ type UserUseCase interface {
 	ChangePassword(req *dtos.ChangePasswordRequestDto, userID uint) (*dtos.ChangePasswordResponseDto, error)
 	ForgetPasswordStep1(ctx context.Context, req *dtos.ForgetPasswordStep1RequestDto) (*dtos.ForgetPasswordStep1ResponseDto, error)
 	ForgetPasswordStep2(ctx context.Context, req *dtos.ForgetPasswordStep2RequestDto) (*dtos.ForgetPasswordStep2ResponseDto, error)
+	AdminUpdateUser(req *dtos.AdminUpdateUserRequestDto) error
 }
 
 type userUseCase struct {
@@ -373,4 +374,54 @@ func (u *userUseCase) ForgetPasswordStep2(ctx context.Context, req *dtos.ForgetP
 	return &dtos.ForgetPasswordStep2ResponseDto{
 		Message: "Password changed successfully",
 	}, nil
+}
+
+func (u *userUseCase) AdminUpdateUser(req *dtos.AdminUpdateUserRequestDto) error {
+	user, err := u.userRepo.GetByID(req.UserID)
+	if err != nil {
+		return errors.New("user not found")
+	}
+
+	if req.UniversityID != "" && req.UniversityID != user.UniversityID {
+		duplicatedUser, _ := u.userRepo.GetByUniID(req.UniversityID)
+		if duplicatedUser != nil {
+			return errors.New("university ID already exists")
+		}
+
+		user.UniversityID = req.UniversityID
+	}
+	if req.Email != "" && req.Email != user.Email {
+		duplicatedUser, _ := u.userRepo.GetByEmail(req.Email)
+		if duplicatedUser != nil {
+			return errors.New("email already exists")
+		}
+
+		user.Email = req.Email
+		user.IsVerified = false
+	}
+	if req.NewPassword != "" {
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+		if err != nil {
+			return err
+		}
+		user.PasswordHash = string(hashedPassword)
+	}
+	if req.FirstName != "" && req.FirstName != user.FirstName {
+		user.FirstName = req.FirstName
+	}
+	if req.LastName != "" && req.LastName != user.LastName {
+		user.LastName = req.LastName
+	}
+	if req.Role != "" && req.Role != user.Role {
+		user.Role = req.Role
+	}
+
+	err = u.userRepo.Update(user)
+
+	if err != nil {
+		log.Println("Error updating user:", err)
+		return err
+	}
+
+	return nil
 }

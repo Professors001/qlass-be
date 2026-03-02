@@ -1,0 +1,27 @@
+meta {
+  name: Update User By Admin
+  type: http
+  seq: 10
+}
+
+put {
+  url: {{base_url}}/auth/admin-update
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJyb2xlIjoiYWRtaW4iLCJleHAiOjE3NzI3MDg3NTB9.pO1yUELwCYpi--0T-WrYIGx9ZK66EecLm0AbfggWdl0
+}
+
+body:json {
+  {
+    "user_id": 4,
+    "first_name": "Bank"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
