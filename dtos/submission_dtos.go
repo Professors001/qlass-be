@@ -21,3 +21,10 @@ type GetSubmissionResponseDto struct {
 	UpdatedAt       time.Time                   `json:"updated_at"`
 	Attachments     []*GetAttachmentResponseDto `json:"attachments"`
 }
+
+type StudentSaveSubmissionDto struct {
+	ID             uint   `json:"id" binding:"required"`
+	StudentComment string `json:"student_comment"`
+	Status         string `json:"status" binding:"required,oneof=DRAFT SUBMIT"`
+	AttchmentIds   []uint `json:"attachment_ids"`
+}

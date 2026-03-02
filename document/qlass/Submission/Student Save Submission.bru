@@ -1,12 +1,12 @@
 meta {
-  name: Upload File
+  name: Student Save Submission
   type: http
   seq: 4
 }
 
-post {
-  url: {{base_url}}/attachments/upload
-  body: multipartForm
+put {
+  url: {{base_url}}/submissions
+  body: json
   auth: bearer
 }
 
@@ -14,8 +14,13 @@ auth:bearer {
   token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozLCJyb2xlIjoic3R1ZGVudCIsImV4cCI6MTc3Mjc1MDIyNn0.3I7P0kps2TVhJOjXQc_r0JBK4icwrtZxM1q2K-GWCNc
 }
 
-body:multipart-form {
-  attachment: @file(/Users/bankaphisit/Downloads/meme-pepe-the-frog-on-the-toilet-sad-desktop-wallpaper-cover.JPG)
+body:json {
+  {
+    "id": 1,
+    "student_comment": "Test",
+    "status": "SUBMIT",
+    "attachment_ids": [4, 5]
+  }
 }
 
 settings {

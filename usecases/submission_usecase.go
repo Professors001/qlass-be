@@ -15,8 +15,8 @@ type SubmissionUseCase interface {
 	GetSubmissonByMaterialIDAndStudentID(classMaterialID uint, studentID uint) (*dtos.GetSubmissionResponseDto, error)
 	GetSubmissionsByMaterialID(classMaterialID uint) ([]*dtos.GetSubmissionResponseDto, error)
 	GetSubmissionsByStudentID(studentID uint) ([]*dtos.GetSubmissionResponseDto, error)
+	StudentSaveSubmission(dto dtos.StudentSaveSubmissionDto, studentID uint) error
 }
-
 type submissionUseCase struct {
 	submissionRepo    repositories.SubmissionRepository
 	classMaterialRepo repositories.ClassMaterialRepository
@@ -127,4 +127,71 @@ func (u *submissionUseCase) GetSubmissionsByMaterialID(classMaterialID uint) ([]
 
 func (u *submissionUseCase) GetSubmissionsByStudentID(studentID uint) ([]*dtos.GetSubmissionResponseDto, error) {
 	return nil, nil
+}
+
+func (u *submissionUseCase) StudentSaveSubmission(req dtos.StudentSaveSubmissionDto, studentID uint) error {
+	submission, err := u.submissionRepo.GetByID(req.ID)
+	if err != nil {
+		return err
+	}
+
+	if submission == nil {
+		return errors.New("submission not found")
+	}
+
+	if submission.UserID != studentID {
+		return errors.New("unauthorized")
+	}
+
+	if req.StudentComment != "" && req.StudentComment != submission.StudentComment {
+		submission.StudentComment = req.StudentComment
+	}
+
+	if req.Status == "DRAFT" && submission.Status != "DRAFT" {
+		submission.Status = "DRAFT"
+	}
+
+	if req.Status == "SUBMIT" && (submission.Status != "SUBMIT" && submission.SubmittedAt == nil) {
+		submission.Status = "SUBMIT"
+		now := time.Now()
+		submission.SubmittedAt = &now
+
+		if submission.ClassMaterial.DueAt != nil && submission.SubmittedAt.After(*submission.ClassMaterial.DueAt) {
+			submission.Status = "LATE"
+		}
+	}
+
+	// UnAttach all old Attachment
+	attachments, err := u.attachmentRepo.GetByOwnerTypeAndOwnerID("submission", submission.ID)
+	if err == nil {
+		for _, att := range attachments {
+			att.OwnerID = nil
+			att.OwnerType = nil
+			if err := u.attachmentRepo.Update(att); err != nil {
+				return err
+			}
+		}
+	}
+
+	for _, attachmentID := range req.AttchmentIds {
+		attachment, err := u.attachmentRepo.GetByID(attachmentID)
+		if err != nil {
+			return err
+		}
+
+		attachment.OwnerType = utils.Ptr("submission")
+		attachment.OwnerID = &submission.ID
+
+		err = u.attachmentRepo.Update(attachment)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = u.submissionRepo.Update(submission)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
