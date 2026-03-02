@@ -1,12 +1,12 @@
 meta {
-  name: Upload File
+  name: Update User
   type: http
-  seq: 4
+  seq: 10
 }
 
-post {
-  url: {{base_url}}/attachments/upload
-  body: multipartForm
+put {
+  url: {{base_url}}/auth/update
+  body: json
   auth: bearer
 }
 
@@ -14,8 +14,12 @@ auth:bearer {
   token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo0LCJyb2xlIjoic3R1ZGVudCIsImV4cCI6MTc3MjcwMjQ3MH0.9xXC29bHMxyjIEWN6sMLuUwa81vjgttVC7CouYsvGoA
 }
 
-body:multipart-form {
-  attachment: @file(/Users/bankaphisit/Downloads/meme-pepe-the-frog-on-the-toilet-sad-desktop-wallpaper-cover.JPG)
+body:json {
+  {
+    "first_name": "Aphisit",
+    "last_name": "Aphisit",
+    "profile_img_attachment_id": 2
+  }
 }
 
 settings {

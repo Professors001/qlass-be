@@ -113,3 +113,31 @@ func (h *UserHandler) CreateTeacher(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, res)
 }
+
+func (h *UserHandler) UpdateUser(c *gin.Context) {
+	val, exists := c.Get("currentUser")
+	if !exists {
+		utils.SendError(c, http.StatusUnauthorized, "UNAUTHORIZED", "No user found in context")
+		return
+	}
+
+	claims, ok := val.(*middleware.JWTCustomClaims)
+	if !ok {
+		utils.SendError(c, http.StatusUnauthorized, "UNAUTHORIZED", "Invalid user context")
+		return
+	}
+
+	var req dtos.UpdateUserRequestDto
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.SendError(c, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+		return
+	}
+
+	res, err := h.UseCase.UpdateUser(&req, claims.UserId)
+	if err != nil {
+		utils.SendError(c, http.StatusInternalServerError, "UPDATE_FAILED", err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+}

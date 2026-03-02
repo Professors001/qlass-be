@@ -66,3 +66,9 @@ type CreateTeacherResponseDto struct {
 	Message string `json:"message"`
 	UserID  uint   `json:"user_id"`
 }
+
+type UpdateUserRequestDto struct {
+	FirstName              string `json:"first_name"`
+	LastName               string `json:"last_name"`
+	ProfileImgAttachmentID uint   `json:"profile_img_attachment_id"`
+}

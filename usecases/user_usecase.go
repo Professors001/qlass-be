@@ -25,6 +25,7 @@ type UserUseCase interface {
 	RegisterSecondStep(ctx context.Context, req *dtos.RegisterRequestStepTwoDto) (*dtos.ResponseRegisterStepTwoDto, error)
 	Login(ctx context.Context, req *dtos.LoginRequestDto) (*dtos.LoginResponseDto, error)
 	CreateTeacher(ctx context.Context, req *dtos.CreateTeacherRequestDto) (*dtos.CreateTeacherResponseDto, error)
+	UpdateUser(req *dtos.UpdateUserRequestDto, userID uint) (*dtos.UserDisplayData, error)
 }
 
 type userUseCase struct {
@@ -245,4 +246,43 @@ func (u *userUseCase) CreateTeacher(ctx context.Context, req *dtos.CreateTeacher
 		Message: "Teacher created successfully",
 		UserID:  teacher.ID,
 	}, nil
+}
+
+func (u *userUseCase) UpdateUser(req *dtos.UpdateUserRequestDto, userID uint) (*dtos.UserDisplayData, error) {
+	user, err := u.userRepo.GetByID(userID)
+	if err != nil {
+		return nil, errors.New("user not found")
+	}
+
+	if req.FirstName != "" {
+		user.FirstName = req.FirstName
+	}
+	if req.LastName != "" {
+		user.LastName = req.LastName
+	}
+
+	if req.ProfileImgAttachmentID != *user.ProfileImgAttachmentID {
+		attachmentToDelete := *user.ProfileImgAttachmentID
+
+		user.ProfileImgAttachmentID = &req.ProfileImgAttachmentID
+
+		if err := u.attachmentUseCase.DeleteAttachment(attachmentToDelete); err != nil {
+			log.Println("Error deleting attachment:", err)
+			return nil, err
+		}
+	}
+
+	if err := u.userRepo.Update(user); err != nil {
+		log.Println("Error updating user:", err)
+		return nil, err
+	}
+
+	var profileImgURL string
+	if user.ProfileImgAttachmentID != nil {
+		if attachment, err := u.attachmentUseCase.GetAttachmentByID(*user.ProfileImgAttachmentID); err == nil {
+			profileImgURL = attachment.FileURL
+		}
+	}
+
+	return transforms.UserEntityToUserDisplayResponse(user, profileImgURL), nil
 }
