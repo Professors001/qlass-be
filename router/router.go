@@ -84,6 +84,7 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	userRouter.GET("/me", middleware.AuthorizeJWT(jwtService), handler.UserHandler.Me)
 	userRouter.POST("/create-teacher", middleware.AuthorizeJWT(jwtService), handler.UserHandler.CreateTeacher)
 	userRouter.PUT("/update", middleware.AuthorizeJWT(jwtService), handler.UserHandler.UpdateUser)
+	userRouter.PUT("/change-password", middleware.AuthorizeJWT(jwtService), handler.UserHandler.ChangePassword)
 
 	// Classes
 	classRouter := r.Group("/classes")

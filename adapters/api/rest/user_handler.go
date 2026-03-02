@@ -141,3 +141,31 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 
 	c.JSON(http.StatusOK, res)
 }
+
+func (h *UserHandler) ChangePassword(c *gin.Context) {
+	val, exists := c.Get("currentUser")
+	if !exists {
+		utils.SendError(c, http.StatusUnauthorized, "UNAUTHORIZED", "No user found in context")
+		return
+	}
+
+	claims, ok := val.(*middleware.JWTCustomClaims)
+	if !ok {
+		utils.SendError(c, http.StatusUnauthorized, "UNAUTHORIZED", "Invalid user context")
+		return
+	}
+
+	var req dtos.ChangePasswordRequestDto
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.SendError(c, http.StatusBadRequest, "BAD_REQUEST", err.Error())
+		return
+	}
+
+	res, err := h.UseCase.ChangePassword(&req, claims.UserId)
+	if err != nil {
+		utils.SendError(c, http.StatusInternalServerError, "UPDATE_FAILED", err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+}

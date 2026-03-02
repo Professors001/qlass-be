@@ -72,3 +72,12 @@ type UpdateUserRequestDto struct {
 	LastName               string `json:"last_name"`
 	ProfileImgAttachmentID uint   `json:"profile_img_attachment_id"`
 }
+
+type ChangePasswordRequestDto struct {
+	CurrentPassword string `json:"current_password" binding:"required"`
+	NewPassword     string `json:"new_password" binding:"required,min=6"`
+}
+
+type ChangePasswordResponseDto struct {
+	Message string `json:"message"`
+}

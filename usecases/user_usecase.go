@@ -26,6 +26,7 @@ type UserUseCase interface {
 	Login(ctx context.Context, req *dtos.LoginRequestDto) (*dtos.LoginResponseDto, error)
 	CreateTeacher(ctx context.Context, req *dtos.CreateTeacherRequestDto) (*dtos.CreateTeacherResponseDto, error)
 	UpdateUser(req *dtos.UpdateUserRequestDto, userID uint) (*dtos.UserDisplayData, error)
+	ChangePassword(req *dtos.ChangePasswordRequestDto, userID uint) (*dtos.ChangePasswordResponseDto, error)
 }
 
 type userUseCase struct {
@@ -285,4 +286,32 @@ func (u *userUseCase) UpdateUser(req *dtos.UpdateUserRequestDto, userID uint) (*
 	}
 
 	return transforms.UserEntityToUserDisplayResponse(user, profileImgURL), nil
+}
+
+func (u *userUseCase) ChangePassword(req *dtos.ChangePasswordRequestDto, userID uint) (*dtos.ChangePasswordResponseDto, error) {
+	user, err := u.userRepo.GetByID(userID)
+	if err != nil {
+		return nil, errors.New("This Account is not registered")
+	}
+
+	// Compare password
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.CurrentPassword))
+	if err != nil {
+		return nil, errors.New("Incorrect password")
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+	user.PasswordHash = string(hashedPassword)
+
+	if err := u.userRepo.Update(user); err != nil {
+		log.Println("Error updating user:", err)
+		return nil, err
+	}
+
+	return &dtos.ChangePasswordResponseDto{
+		Message: "Password changed successfully",
+	}, nil
 }
