@@ -1,5 +1,7 @@
 package dtos
 
+import "qlass-be/domain/entities"
+
 type RegisterRequestStepOneDto struct {
 	UniversityID string `json:"university_id" binding:"required"`
 	Email        string `json:"email" binding:"required,email"`
@@ -79,5 +81,30 @@ type ChangePasswordRequestDto struct {
 }
 
 type ChangePasswordResponseDto struct {
+	Message string `json:"message"`
+}
+
+type ForgetPasswordStep1RequestDto struct {
+	UniversityID string `json:"university_id" binding:"required"`
+}
+
+type ForgetPasswordStep1ResponseDto struct {
+	Message string `json:"message"`
+	Email   string `json:"email"`
+}
+
+type TempForgetPasswordData struct {
+	UniversityID string        `json:"university_id" binding:"required"`
+	OTP          string        `json:"otp" binding:"required"`
+	User         entities.User `json:"user"`
+}
+
+type ForgetPasswordStep2RequestDto struct {
+	UniversityID string `json:"university_id" binding:"required"`
+	OTP          string `json:"otp" binding:"required"`
+	NewPassword  string `json:"new_password" binding:"required,min=6"`
+}
+
+type ForgetPasswordStep2ResponseDto struct {
 	Message string `json:"message"`
 }

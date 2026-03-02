@@ -19,6 +19,7 @@ func NewUserRedisRepository(helper *CacheHelper) repositories.UserCacheRepositor
 }
 
 var keyPrefix = "reg:"
+var forgetKeyPrefix = "forget:"
 
 func (r *UserRedisRepository) SetRegistrationData(ctx context.Context, key string, data dtos.TempRegisterDataDto, duration time.Duration) error {
 	// Log data for debugging
@@ -32,4 +33,16 @@ func (r *UserRedisRepository) GetRegistrationData(ctx context.Context, key strin
 	var data dtos.TempRegisterDataDto
 	err := r.helper.GetJSON(ctx, key, &data)
 	return data, err
+}
+
+func (r *UserRedisRepository) SetForgetPasswordData(ctx context.Context, key string, data *dtos.TempForgetPasswordData, duration time.Duration) error {
+	key = forgetKeyPrefix + key
+	return r.helper.SetJSON(ctx, key, data, duration)
+}
+
+func (r *UserRedisRepository) GetForgetPasswordData(ctx context.Context, key string) (*dtos.TempForgetPasswordData, error) {
+	key = forgetKeyPrefix + key
+	var data dtos.TempForgetPasswordData
+	err := r.helper.GetJSON(ctx, key, &data)
+	return &data, err
 }

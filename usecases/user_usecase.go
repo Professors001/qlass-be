@@ -27,6 +27,8 @@ type UserUseCase interface {
 	CreateTeacher(ctx context.Context, req *dtos.CreateTeacherRequestDto) (*dtos.CreateTeacherResponseDto, error)
 	UpdateUser(req *dtos.UpdateUserRequestDto, userID uint) (*dtos.UserDisplayData, error)
 	ChangePassword(req *dtos.ChangePasswordRequestDto, userID uint) (*dtos.ChangePasswordResponseDto, error)
+	ForgetPasswordStep1(ctx context.Context, req *dtos.ForgetPasswordStep1RequestDto) (*dtos.ForgetPasswordStep1ResponseDto, error)
+	ForgetPasswordStep2(ctx context.Context, req *dtos.ForgetPasswordStep2RequestDto) (*dtos.ForgetPasswordStep2ResponseDto, error)
 }
 
 type userUseCase struct {
@@ -312,6 +314,63 @@ func (u *userUseCase) ChangePassword(req *dtos.ChangePasswordRequestDto, userID 
 	}
 
 	return &dtos.ChangePasswordResponseDto{
+		Message: "Password changed successfully",
+	}, nil
+}
+
+func (u *userUseCase) ForgetPasswordStep1(ctx context.Context, req *dtos.ForgetPasswordStep1RequestDto) (*dtos.ForgetPasswordStep1ResponseDto, error) {
+	user, err := u.userRepo.GetByUniID(req.UniversityID)
+	if err != nil {
+		return nil, errors.New("This Account is not registered")
+	}
+
+	otp := utils.GenerateRandomString(6)
+
+	err = u.emailService.SendOTP(user.Email, otp)
+
+	tempData := &dtos.TempForgetPasswordData{
+		UniversityID: user.UniversityID,
+		OTP:          otp,
+		User:         *user,
+	}
+
+	err = u.userCacheRepo.SetForgetPasswordData(ctx, user.UniversityID, tempData, 5*time.Minute)
+	if err != nil {
+		log.Println("Error storing registration data in cache:", err)
+		return nil, err
+	}
+
+	return &dtos.ForgetPasswordStep1ResponseDto{
+		Message: "Please proceed to step 2",
+		Email:   user.Email,
+	}, nil
+}
+
+func (u *userUseCase) ForgetPasswordStep2(ctx context.Context, req *dtos.ForgetPasswordStep2RequestDto) (*dtos.ForgetPasswordStep2ResponseDto, error) {
+	tempData, err := u.userCacheRepo.GetForgetPasswordData(ctx, req.UniversityID)
+	if err != nil {
+		return nil, errors.New("no pending registration found or OTP expired")
+	}
+
+	// Validate OTP
+	if tempData.OTP != req.OTP {
+		return nil, errors.New("invalid OTP")
+	}
+
+	user := tempData.User
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+	user.PasswordHash = string(hashedPassword)
+
+	if err := u.userRepo.Update(&user); err != nil {
+		log.Println("Error updating user:", err)
+		return nil, err
+	}
+
+	return &dtos.ForgetPasswordStep2ResponseDto{
 		Message: "Password changed successfully",
 	}, nil
 }

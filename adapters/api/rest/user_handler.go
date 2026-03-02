@@ -169,3 +169,37 @@ func (h *UserHandler) ChangePassword(c *gin.Context) {
 
 	c.JSON(http.StatusOK, res)
 }
+
+func (h *UserHandler) ForgetPasswordStep1(c *gin.Context) {
+	var req dtos.ForgetPasswordStep1RequestDto
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 2. Call UseCase
+	res, err := h.UseCase.ForgetPasswordStep1(c.Request.Context(), &req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+}
+
+func (h *UserHandler) ForgetPasswordStep2(c *gin.Context) {
+	var req dtos.ForgetPasswordStep2RequestDto
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// 2. Call UseCase
+	res, err := h.UseCase.ForgetPasswordStep2(c.Request.Context(), &req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, res)
+}
