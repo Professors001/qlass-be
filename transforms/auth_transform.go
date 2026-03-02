@@ -37,3 +37,14 @@ func TempRegisterDataDtoToUserEntity(dto dtos.TempRegisterDataDto) *entities.Use
 		IsActive:     true,
 	}
 }
+
+func UserEntityToUserDisplayResponse(u *entities.User, imgUrl string) *dtos.UserDisplayData {
+	return &dtos.UserDisplayData{
+		UniversityID:  u.UniversityID,
+		Email:         u.Email,
+		ProfileImgUrl: imgUrl,
+		FirstName:     u.FirstName,
+		LastName:      u.LastName,
+		Role:          u.Role,
+	}
+}

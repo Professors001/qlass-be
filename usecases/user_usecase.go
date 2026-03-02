@@ -185,12 +185,17 @@ func (u *userUseCase) Login(ctx context.Context, req *dtos.LoginRequestDto) (*dt
 		return nil, errors.New("Incorrect password")
 	}
 
-	userDisplay := dtos.UserDisplayData{
-		UniversityID: user.UniversityID,
-		Email:        user.Email,
-		FirstName:    user.FirstName,
-		LastName:     user.LastName,
-		Role:         user.Role,
+	userDisplay := transforms.UserEntityToUserDisplayResponse(user, "")
+
+	if user.ProfileImgAttachmentID != nil {
+		attachment, err := u.attachmentUseCase.GetAttachmentByID(*user.ProfileImgAttachmentID)
+
+		if err != nil {
+			log.Println("Error getting attachment:", err)
+		} else {
+			log.Println("Img URL:", attachment.FileURL)
+			userDisplay = transforms.UserEntityToUserDisplayResponse(user, attachment.FileURL)
+		}
 	}
 
 	token, err := u.jwtService.GenerateToken(user.ID, user.Role)
@@ -201,7 +206,7 @@ func (u *userUseCase) Login(ctx context.Context, req *dtos.LoginRequestDto) (*dt
 	return &dtos.LoginResponseDto{
 		Message: "Login successful",
 		Token:   token,
-		User:    userDisplay,
+		User:    *userDisplay,
 	}, nil
 }
 
