@@ -32,7 +32,6 @@ func TempRegisterDataDtoToUserEntity(dto dtos.TempRegisterDataDto) *entities.Use
 		PasswordHash: dto.PasswordHash,
 		FirstName:    dto.FirstName,
 		LastName:     dto.LastName,
-		ProfileImgURL: "ON_HOLD",
 		Role:         dto.Role,
 		IsVerified:   true,
 		IsActive:     true,

@@ -1,9 +1,14 @@
 package usecases
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"log"
+	"mime/multipart"
+	"net/http"
 	"qlass-be/domain/entities"
 	"qlass-be/domain/repositories"
 	"qlass-be/dtos"
@@ -23,18 +28,20 @@ type UserUseCase interface {
 }
 
 type userUseCase struct {
-	userRepo      repositories.UserRepository
-	userCacheRepo repositories.UserCacheRepository
-	jwtService    middleware.JwtService
-	emailService  EmailService
+	userRepo          repositories.UserRepository
+	userCacheRepo     repositories.UserCacheRepository
+	jwtService        middleware.JwtService
+	emailService      EmailService
+	attachmentUseCase AttachmentUseCase
 }
 
-func NewUserUseCase(repo repositories.UserRepository, cacheRepo repositories.UserCacheRepository, jwtService middleware.JwtService, email EmailService) UserUseCase {
+func NewUserUseCase(repo repositories.UserRepository, cacheRepo repositories.UserCacheRepository, jwtService middleware.JwtService, email EmailService, attachmentUC AttachmentUseCase) UserUseCase {
 	return &userUseCase{
-		userRepo:      repo,
-		userCacheRepo: cacheRepo,
-		jwtService:    jwtService,
-		emailService:  email,
+		userRepo:          repo,
+		userCacheRepo:     cacheRepo,
+		jwtService:        jwtService,
+		emailService:      email,
+		attachmentUseCase: attachmentUC,
 	}
 }
 
@@ -99,10 +106,64 @@ func (u *userUseCase) RegisterSecondStep(ctx context.Context, req *dtos.Register
 
 	// Create user in DB
 	newUser := transforms.TempRegisterDataDtoToUserEntity(tempData)
+
 	err = u.userRepo.Create(newUser)
 	if err != nil {
 		log.Println("Error creating user in DB:", err)
 		return nil, err
+	}
+
+	// Download and upload profile image
+	if len(newUser.FirstName) > 0 && len(newUser.LastName) > 0 {
+		initials := fmt.Sprintf("%c%c", newUser.FirstName[0], newUser.LastName[0])
+		resp, err := http.Get("https://ui-avatars.com/api/?name=" + initials)
+		if err == nil {
+			defer resp.Body.Close()
+			if resp.StatusCode == http.StatusOK {
+				filename := fmt.Sprintf("profile_%s_%s.png", newUser.FirstName, newUser.LastName)
+
+				var b bytes.Buffer
+				w := multipart.NewWriter(&b)
+
+				fw, err := w.CreateFormFile("file", filename)
+				if err != nil {
+					log.Println("Error creating form file:", err)
+					return nil, err
+				}
+
+				if _, err = io.Copy(fw, resp.Body); err != nil {
+					log.Println("Error copying image data:", err)
+					return nil, err
+				}
+				w.Close()
+
+				req, err := http.NewRequest("POST", "", &b)
+				if err != nil {
+					log.Println("Error creating dummy request:", err)
+					return nil, err
+				}
+				req.Header.Set("Content-Type", w.FormDataContentType())
+
+				if err := req.ParseMultipartForm(10 << 20); err != nil {
+					log.Println("Error parsing multipart form:", err)
+					return nil, err
+				}
+
+				fileHeader := req.MultipartForm.File["file"][0]
+
+				attachment, err := u.attachmentUseCase.UploadAttachment(newUser.ID, fileHeader)
+				if err == nil {
+					newUser.ProfileImgAttachmentID = &attachment.AttachmentID
+					if err := u.userRepo.Update(newUser); err != nil {
+						log.Println("Error updating user with profile image:", err)
+					}
+				} else {
+					log.Println("Error uploading profile image:", err)
+				}
+			}
+		} else {
+			log.Println("Error downloading profile image:", err)
+		}
 	}
 
 	return &dtos.ResponseRegisterStepTwoDto{
@@ -160,15 +221,14 @@ func (u *userUseCase) CreateTeacher(ctx context.Context, req *dtos.CreateTeacher
 	}
 
 	teacher := &entities.User{
-		UniversityID:  req.UniversityID,
-		Email:         req.Email,
-		PasswordHash:  string(hashedPassword),
-		FirstName:     req.FirstName,
-		LastName:      req.LastName,
-		Role:          "teacher",
-		IsVerified:    false,
-		IsActive:      true,
-		ProfileImgURL: "https://ui-avatars.com/api/?name=" + req.FirstName + "+" + req.LastName,
+		UniversityID: req.UniversityID,
+		Email:        req.Email,
+		PasswordHash: string(hashedPassword),
+		FirstName:    req.FirstName,
+		LastName:     req.LastName,
+		Role:         "teacher",
+		IsVerified:   false,
+		IsActive:     true,
 	}
 
 	if err := u.userRepo.Create(teacher); err != nil {

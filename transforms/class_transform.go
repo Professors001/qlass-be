@@ -19,7 +19,7 @@ func EntityToClassDetailsDto(class entities.Class) dtos.ClassDetailsDto {
 		OwnerID:         strconv.FormatUint(uint64(class.OwnerID), 10),
 		OwnerFirstName:  class.Owner.FirstName,
 		OwnerLastName:   class.Owner.LastName,
-		OwnerProfileImg: class.Owner.ProfileImgURL,
+		OwnerProfileImg: class.Owner.ProfileImgAttachment.ObjectKey,
 		CreatedAt:       class.CreatedAt.String(),
 		UpdatedAt:       class.UpdatedAt.String(),
 	}
@@ -30,7 +30,7 @@ func EntityToStudentDetailsDto(enrollment entities.ClassEnrollment) dtos.Student
 		UniversityID: enrollment.User.UniversityID,
 		FirstName:    enrollment.User.FirstName,
 		LastName:     enrollment.User.LastName,
-		ProfileImg:   enrollment.User.ProfileImgURL,
+		ProfileImg:   enrollment.User.ProfileImgAttachment.ObjectKey,
 		Email:        enrollment.User.Email,
 		EnrolledRole: enrollment.Role,
 		EnrolledAt:   enrollment.CreatedAt.String(),

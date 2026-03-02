@@ -140,7 +140,7 @@ func (u *attachmentUseCase) enrichAttachment(attachment *entities.Attachment) (*
 	}
 
 	bucketName := u.cfg.MinioBucketName
-	fileURL, err := u.storageService.GetPresignedURL(context.Background(), bucketName, attachment.ObjectKey, time.Hour*1)
+	fileURL, err := u.storageService.GetPresignedURL(context.Background(), bucketName, attachment.ObjectKey, time.Hour*24)
 	if err != nil {
 		return nil, err
 	}

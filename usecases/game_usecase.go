@@ -171,7 +171,7 @@ func (u *gameUseCase) JoinGame(ctx context.Context, pin string, userID uint) (*d
 
 	playerData := &entities.PlayerDataRedis{
 		Name:      user.FirstName + " " + user.LastName,
-		AvatarURL: user.ProfileImgURL,
+		AvatarURL: "----",
 		Score:     0,
 		Correct:   0,
 		Streak:    0,

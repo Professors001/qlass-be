@@ -28,20 +28,21 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 		cfg.SMTPUser,
 		cfg.SMTPPass,
 	)
+	attachmentRepo := databases.NewPostgresAttachmentRepository(db)
 
 	userRepo := databases.NewPostgresUserRepository(db)
 	userCacheRepo := cache.NewUserRedisRepository(cacheService)
-	userUseCase := usecases.NewUserUseCase(userRepo, userCacheRepo, jwtService, emailService)
+
+	attachmentUseCase := usecases.NewAttachmentUseCase(storageService, attachmentRepo, userRepo, cfg)
+	attachmentHandler := rest.NewAttachmentHandler(attachmentUseCase)
+
+	userUseCase := usecases.NewUserUseCase(userRepo, userCacheRepo, jwtService, emailService, attachmentUseCase)
 	userHandler := rest.NewUserHandler(userUseCase)
 
 	classRepo := databases.NewPostgresClassRepository(db)
 	enrollRepo := databases.NewPostgresEnrollRepository(db)
 	classUseCase := usecases.NewClassUseCase(classRepo, enrollRepo)
 	classHandler := rest.NewClassHandler(classUseCase)
-
-	attachmentRepo := databases.NewPostgresAttachmentRepository(db)
-	attachmentUseCase := usecases.NewAttachmentUseCase(storageService, attachmentRepo, userRepo, cfg)
-	attachmentHandler := rest.NewAttachmentHandler(attachmentUseCase)
 
 	quizRepo := databases.NewPostgresQuizRepository(db)
 	quizGameLogRepo := databases.NewPostgresQuizGameLogRepository(db)

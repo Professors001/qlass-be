@@ -69,3 +69,19 @@ func (r *postgresUserRepository) GetByUniID(universityID string) (*entities.User
 
 	return &user, nil
 }
+
+func (r *postgresUserRepository) Update(user *entities.User) error {
+	// GORM handles the SQL Update automatically
+	if err := r.db.Save(user).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *postgresUserRepository) Delete(id uint) error {
+	// GORM handles the SQL Delete automatically
+	if err := r.db.Delete(&entities.User{}, id).Error; err != nil {
+		return err
+	}
+	return nil
+}
