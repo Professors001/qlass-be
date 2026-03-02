@@ -9,6 +9,7 @@ import (
 	"qlass-be/dtos"
 	"qlass-be/middleware"
 	"qlass-be/transforms"
+	"qlass-be/utils"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -25,13 +26,15 @@ type userUseCase struct {
 	userRepo      repositories.UserRepository
 	userCacheRepo repositories.UserCacheRepository
 	jwtService    middleware.JwtService
+	emailService  EmailService
 }
 
-func NewUserUseCase(repo repositories.UserRepository, cacheRepo repositories.UserCacheRepository, jwtService middleware.JwtService) UserUseCase {
+func NewUserUseCase(repo repositories.UserRepository, cacheRepo repositories.UserCacheRepository, jwtService middleware.JwtService, email EmailService) UserUseCase {
 	return &userUseCase{
 		userRepo:      repo,
 		userCacheRepo: cacheRepo,
 		jwtService:    jwtService,
+		emailService:  email,
 	}
 }
 
@@ -58,7 +61,15 @@ func (u *userUseCase) RegisterFirstStep(ctx context.Context, req *dtos.RegisterR
 		return nil, err
 	}
 
-	tempData := transforms.RequestToTempRegisterDataDto(req, string(hashedPassword), "123456")
+	otp := utils.GenerateRandomString(6)
+
+	tempData := transforms.RequestToTempRegisterDataDto(req, string(hashedPassword), otp)
+
+	err = u.emailService.SendOTP(req.Email, otp)
+	if err != nil {
+		log.Println("Error sending OTP email:", err)
+		return nil, err
+	}
 
 	// Store into Redis with Email as key (TTL 5 minutes)
 	err = u.userCacheRepo.SetRegistrationData(ctx, req.Email, tempData, 5*time.Minute)

@@ -7,6 +7,7 @@ import (
 	"qlass-be/adapters/api/websocket"
 	"qlass-be/adapters/cache"
 	"qlass-be/adapters/databases"
+	"qlass-be/adapters/services"
 	"qlass-be/adapters/storage"
 	"qlass-be/config"
 	"qlass-be/middleware"
@@ -21,10 +22,16 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 
 	// Seed Users (Admin, Teacher, Student) if not exists
 	databases.SeedUsers(db)
+	emailService := services.NewSMTPEmailService(
+		cfg.SMTPHost,
+		cfg.SMTPPort,
+		cfg.SMTPUser,
+		cfg.SMTPPass,
+	)
 
 	userRepo := databases.NewPostgresUserRepository(db)
 	userCacheRepo := cache.NewUserRedisRepository(cacheService)
-	userUseCase := usecases.NewUserUseCase(userRepo, userCacheRepo, jwtService)
+	userUseCase := usecases.NewUserUseCase(userRepo, userCacheRepo, jwtService, emailService)
 	userHandler := rest.NewUserHandler(userUseCase)
 
 	classRepo := databases.NewPostgresClassRepository(db)

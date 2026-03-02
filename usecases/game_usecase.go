@@ -89,7 +89,6 @@ func (u *gameUseCase) StartGameSession(ctx context.Context, teacherID uint, dto 
 	}
 
 	// 4. Generate Unique PIN
-	rand.Seed(time.Now().UnixNano())
 	pin := ""
 	for {
 		pin = fmt.Sprintf("%06d", rand.Intn(1000000))

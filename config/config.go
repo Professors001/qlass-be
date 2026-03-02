@@ -35,6 +35,11 @@ type Config struct {
 	MinioSecretKey  string `mapstructure:"MINIO_ROOT_PASSWORD"`
 	MinioBucketName string `mapstructure:"MINIO_BUCKET_NAME"`
 	MinioUseSSL     bool   `mapstructure:"MINIO_USE_SSL"`
+
+	SMTPHost string `mapstructure:"SMTP_HOST"`
+	SMTPPort string `mapstructure:"SMTP_PORT"`
+	SMTPUser string `mapstructure:"SMTP_USER"`
+	SMTPPass string `mapstructure:"SMTP_PASS"`
 }
 
 // LoadConfig reads configuration from .env file or environment variables
@@ -67,6 +72,10 @@ func LoadConfig() *Config {
 
 	if config.MinioEndpoint == "" {
 		log.Fatal("❌ MinIO configuration is missing. Check MINIO_ENDPOINT in your .env file.")
+	}
+
+	if config.SMTPHost == "" {
+		log.Fatal("❌ SMTP configuration is missing. Check SMTP_HOST in your .env file.")
 	}
 
 	// Fix: Redis default user does not need a username.
