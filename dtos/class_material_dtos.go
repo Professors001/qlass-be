@@ -62,3 +62,29 @@ type QuizGameLogDto struct {
 	FinishedAt      *time.Time     `json:"finished_at"`
 	QuizSnapshot    datatypes.JSON `json:"quiz_snapshot"`
 }
+
+type UpdatePostClassMaterialDto struct {
+	ClassMaterialID uint   `json:"class_material_id" binding:"required"`
+	Title           string `json:"title"`
+	Description     string `json:"description"`
+	AttachmentIds   []uint `json:"attachment_ids"`
+	Published       bool   `json:"published"`
+}
+
+type UpdateAssignmentClassMaterialDto struct {
+	ClassMaterialID uint       `json:"class_material_id" binding:"required"`
+	Title           string     `json:"title"`
+	Description     string     `json:"description"`
+	AttachmentIds   []uint     `json:"attachment_ids"`
+	Published       bool       `json:"published"`
+	Points          *int       `json:"points" binding:"omitempty,min=0"`
+	DueAt           *time.Time `json:"due_at" binding:"omitempty,gt"`
+}
+
+type UpdateQuizClassMaterialDto struct {
+	ClassMaterialID uint   `json:"class_material_id" binding:"required"`
+	Title           string `json:"title"`
+	Description     string `json:"description"`
+	Published       bool   `json:"published"`
+	Points          *int   `json:"points" binding:"omitempty,min=0"`
+}

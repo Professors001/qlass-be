@@ -112,6 +112,9 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	materialRouter.GET("/:id", handler.ClassMaterialHandler.GetMaterialByID)
 	materialRouter.POST("/quiz", handler.ClassMaterialHandler.CreateQuizMaterial)
 	materialRouter.GET("/class/:class_id", handler.ClassMaterialHandler.GetMaterialsByClassID)
+	materialRouter.PUT("/post", handler.ClassMaterialHandler.UpdatePostMaterial)
+	materialRouter.PUT("/assignment", handler.ClassMaterialHandler.UpdateAssignmentMaterial)
+	materialRouter.PUT("/quiz", handler.ClassMaterialHandler.UpdateQuizMaterial)
 
 	// Submissions
 	submissionRouter := r.Group("/submissions")

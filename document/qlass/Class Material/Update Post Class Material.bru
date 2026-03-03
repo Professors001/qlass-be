@@ -1,0 +1,30 @@
+meta {
+  name: Update Post Class Material
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{base_url}}/materials/post
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoidGVhY2hlciIsImV4cCI6MTc3MjgzMTY1NX0.gWA27W0n-Z2utJ5hxKL1z6oILH3L4gttxQrbhAjQ0Z0
+}
+
+body:json {
+  {
+    "class_material_id": 2,
+    "title": "Lecture ครั้งที่ 1",
+    "description": "เอกสารประกอบการเรียน",
+    "attachment_ids": [6, 7],
+    "published": true
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

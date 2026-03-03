@@ -1,0 +1,31 @@
+meta {
+  name: Update Assignment Class Material
+  type: http
+  seq: 6
+}
+
+put {
+  url: {{base_url}}/materials/assignment
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoidGVhY2hlciIsImV4cCI6MTc3MjgzMTY1NX0.gWA27W0n-Z2utJ5hxKL1z6oILH3L4gttxQrbhAjQ0Z0
+}
+
+body:json {
+  {
+    "class_material_id": 1,
+    "title": "Assignment ครั้งที่ 1",
+    "description": "แบบฝึกที่ 1",
+    "attachment_ids": [2, 3],
+    "published": true,
+    "points": 10
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

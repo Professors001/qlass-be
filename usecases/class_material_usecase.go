@@ -18,6 +18,9 @@ type ClassMaterialUseCase interface {
 	CreateQuizMaterial(dto dtos.CreateQuizClassMaterialDto) error
 	GetMaterialByID(id uint) (*dtos.GetClassMaterialDto, error)
 	GetMaterialsByClassID(classID uint) ([]*dtos.GetThumnailClassMaterialDto, error)
+	UpdatePostClassMaterial(dto *dtos.UpdatePostClassMaterialDto, ownerID uint) error
+	UpdateAssignmentClassMaterial(dto *dtos.UpdateAssignmentClassMaterialDto, ownerID uint) error
+	UpdateQuizClassMaterial(dto *dtos.UpdateQuizClassMaterialDto, ownerID uint) error
 }
 
 type classMaterialUseCase struct {
@@ -217,4 +220,143 @@ func (u *classMaterialUseCase) GetMaterialsByClassID(classID uint) ([]*dtos.GetT
 	}
 
 	return response, nil
+}
+
+func (u *classMaterialUseCase) UpdatePostClassMaterial(dto *dtos.UpdatePostClassMaterialDto, ownerID uint) error {
+	material, err := u.classMaterialRepo.GetByID(dto.ClassMaterialID)
+	if err != nil {
+		return err
+	}
+
+	class, err := u.classRepo.GetByID(material.ClassID)
+	if err != nil {
+		return err
+	}
+
+	if class.OwnerID != ownerID {
+		return errors.New("only class owner can update class material")
+	}
+
+	// Validate that we are updating the correct type
+	if material.Type != "lecture" {
+		return errors.New("material type mismatch: expected lecture")
+	}
+
+	material.Title = dto.Title
+	material.Description = dto.Description
+
+	u.handlePublishedState(material, dto.Published)
+	u.handleAttachments(dto.ClassMaterialID, dto.AttachmentIds)
+
+	return u.classMaterialRepo.Update(material)
+}
+
+func (u *classMaterialUseCase) UpdateAssignmentClassMaterial(dto *dtos.UpdateAssignmentClassMaterialDto, ownerID uint) error {
+	material, err := u.classMaterialRepo.GetByID(dto.ClassMaterialID)
+	if err != nil {
+		return err
+	}
+
+	class, err := u.classRepo.GetByID(material.ClassID)
+	if err != nil {
+		return err
+	}
+
+	if class.OwnerID != ownerID {
+		return errors.New("only class owner can update class material")
+	}
+
+	if material.Type != "assignment" {
+		return errors.New("material type mismatch: expected assignment")
+	}
+
+	material.Title = dto.Title
+	material.Description = dto.Description
+
+	// Only update optional fields if they are provided (not nil)
+	if dto.Points != nil {
+		material.Points = dto.Points
+	}
+	if dto.DueAt != nil {
+		material.DueAt = dto.DueAt
+	}
+
+	u.handlePublishedState(material, dto.Published)
+	u.handleAttachments(dto.ClassMaterialID, dto.AttachmentIds)
+
+	return u.classMaterialRepo.Update(material)
+}
+
+func (u *classMaterialUseCase) UpdateQuizClassMaterial(dto *dtos.UpdateQuizClassMaterialDto, ownerID uint) error {
+	material, err := u.classMaterialRepo.GetByID(dto.ClassMaterialID)
+	if err != nil {
+		return err
+	}
+
+	class, err := u.classRepo.GetByID(material.ClassID)
+	if err != nil {
+		return err
+	}
+
+	if class.OwnerID != ownerID {
+		return errors.New("only class owner can update class material")
+	}
+
+	if material.Type != "quiz" {
+		return errors.New("material type mismatch: expected quiz")
+	}
+
+	material.Title = dto.Title
+	material.Description = dto.Description
+
+	if dto.Points != nil {
+		material.Points = dto.Points
+	}
+
+	u.handlePublishedState(material, dto.Published)
+
+	return u.classMaterialRepo.Update(material)
+}
+
+// Helper to toggle PublishedAt based on the boolean flag
+func (u *classMaterialUseCase) handlePublishedState(material *entities.ClassMaterial, published bool) {
+	if published {
+		// Only set PublishedAt if it wasn't already published to preserve the original publish date
+		if material.PublishedAt == nil {
+			now := time.Now()
+			material.PublishedAt = &now
+		}
+	} else {
+		material.PublishedAt = nil
+	}
+}
+
+func (u *classMaterialUseCase) handleAttachments(materialID uint, attachmentIds []uint) error {
+	attachments, err := u.attachmentRepo.GetByOwnerTypeAndOwnerID("class_material", materialID)
+	if err == nil {
+		for _, att := range attachments {
+			att.OwnerID = nil
+			att.OwnerType = nil
+			if err := u.attachmentRepo.Update(att); err != nil {
+				return err
+			}
+		}
+	}
+
+	for _, attachmentID := range attachmentIds {
+		attachment, err := u.attachmentRepo.GetByID(attachmentID)
+		if err != nil {
+			return err
+		}
+
+		attachment.OwnerType = utils.Ptr("class_material")
+		attachment.OwnerID = &materialID
+
+		err = u.attachmentRepo.Update(attachment)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
