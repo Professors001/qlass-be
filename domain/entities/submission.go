@@ -17,6 +17,6 @@ type Submission struct {
 	SubmittedAt     *time.Time    `json:"submitted_at"`
 	IsLate          bool          `json:"is_late" gorm:"default:false"`
 	TeacherFeedback string        `json:"teacher_feedback" gorm:"type:text"`
-	Status          string        `json:"status" gorm:"default:submitted;type:varchar(50);comment:submitted, graded, returned, late, draft"`
+	Status          string        `json:"status" gorm:"default:submitted;type:varchar(50);comment:submit, graded, return, late, draft"`
 	Attachments     []Attachment  `json:"attachments" gorm:"polymorphic:Owner;"`
 }

@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"errors"
+	"log"
 	"qlass-be/domain/repositories"
 	"qlass-be/dtos"
 	"qlass-be/transforms"
@@ -16,20 +17,23 @@ type SubmissionUseCase interface {
 	GetSubmissionsByMaterialID(classMaterialID uint) ([]*dtos.GetSubmissionResponseDto, error)
 	GetSubmissionsByStudentID(studentID uint) ([]*dtos.GetSubmissionResponseDto, error)
 	StudentSaveSubmission(dto dtos.StudentSaveSubmissionDto, studentID uint) error
+	TeacherSaveSubmission(dto dtos.TeacherSaveSubmissionDto, teacherID uint) error
 }
 type submissionUseCase struct {
 	submissionRepo    repositories.SubmissionRepository
 	classMaterialRepo repositories.ClassMaterialRepository
 	attachmentRepo    repositories.AttachmentRepository
+	classRepo         repositories.ClassRepository
 	attachmentUseCase AttachmentUseCase
 }
 
-func NewSubmissionUseCase(submissionRepo repositories.SubmissionRepository, classMaterialRepo repositories.ClassMaterialRepository, attachmentRepo repositories.AttachmentRepository, attachmentUseCase AttachmentUseCase) SubmissionUseCase {
+func NewSubmissionUseCase(submissionRepo repositories.SubmissionRepository, classMaterialRepo repositories.ClassMaterialRepository, attachmentRepo repositories.AttachmentRepository, attachmentUseCase AttachmentUseCase, classRepo repositories.ClassRepository) SubmissionUseCase {
 	return &submissionUseCase{
 		submissionRepo:    submissionRepo,
 		classMaterialRepo: classMaterialRepo,
 		attachmentRepo:    attachmentRepo,
 		attachmentUseCase: attachmentUseCase,
+		classRepo:         classRepo,
 	}
 }
 
@@ -147,17 +151,22 @@ func (u *submissionUseCase) StudentSaveSubmission(req dtos.StudentSaveSubmission
 		submission.StudentComment = req.StudentComment
 	}
 
-	if req.Status == "DRAFT" && submission.Status != "DRAFT" {
-		submission.Status = "DRAFT"
+	if submission.Status == "graded" {
+		return errors.New("submission already graded")
 	}
 
-	if req.Status == "SUBMIT" && (submission.Status != "SUBMIT" && submission.SubmittedAt == nil) {
-		submission.Status = "SUBMIT"
+	if req.Status == "draft" && submission.Status != "draft" {
+		submission.Status = "draft"
+	}
+
+	if req.Status == "submit" && (submission.Status != "submit" && submission.SubmittedAt == nil) {
+		submission.Status = "submit"
 		now := time.Now()
 		submission.SubmittedAt = &now
 
 		if submission.ClassMaterial.DueAt != nil && submission.SubmittedAt.After(*submission.ClassMaterial.DueAt) {
-			submission.Status = "LATE"
+			submission.Status = "late"
+			submission.IsLate = true
 		}
 	}
 
@@ -187,6 +196,47 @@ func (u *submissionUseCase) StudentSaveSubmission(req dtos.StudentSaveSubmission
 			return err
 		}
 	}
+
+	err = u.submissionRepo.Update(submission)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (u *submissionUseCase) TeacherSaveSubmission(req dtos.TeacherSaveSubmissionDto, teacherID uint) error {
+	submission, err := u.submissionRepo.GetByID(req.SubmissionID)
+	if err != nil {
+		return err
+	}
+
+	if submission == nil {
+		return errors.New("submission not found")
+	}
+
+	classMaterial, err := u.classMaterialRepo.GetByID(submission.ClassMaterialID)
+	if err != nil {
+		return errors.New("class material not found")
+	}
+
+	class, err := u.classRepo.GetByID(classMaterial.ClassID)
+	if err != nil {
+		return errors.New("class not found")
+	}
+
+	if class.OwnerID != teacherID {
+		log.Println(classMaterial.Class.OwnerID, teacherID)
+		return errors.New("unauthorized : not owner of class")
+	}
+
+	if submission.Status != "draft" && submission.SubmittedAt == nil {
+		return errors.New("submission is not submitted")
+	}
+
+	submission.Score = &req.Score
+	submission.TeacherFeedback = req.Feedback
+	submission.Status = "graded"
 
 	err = u.submissionRepo.Update(submission)
 	if err != nil {
