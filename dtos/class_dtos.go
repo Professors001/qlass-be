@@ -68,3 +68,8 @@ type UpdateClassRequestDto struct {
 	Room        string `json:"room"`
 	Hide        bool   `json:"hide"`
 }
+
+type UnenrollRequestDto struct {
+	ClassId uint `json:"class_id" binding:"required"`
+	UserId  uint `json:"user_id" binding:"required"`
+}

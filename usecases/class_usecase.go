@@ -21,6 +21,8 @@ type ClassUseCase interface {
 	GetClassByIDAndUserID(classID uint, userID uint) (*dtos.ClassDetailsDto, error)
 	GetClassByID(classID uint) (*entities.Class, error)
 	UpdateClass(req *dtos.UpdateClassRequestDto, userID uint) error
+	UnEnrollStudent(classID uint, studentID uint, userID uint) error
+	BanStudent(classID uint, studentID uint, userID uint) error
 }
 
 type classUseCase struct {
@@ -218,6 +220,73 @@ func (c *classUseCase) UpdateClass(req *dtos.UpdateClassRequestDto, userID uint)
 
 	err = c.classRepo.Update(&newClass)
 
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *classUseCase) UnEnrollStudent(classID uint, studentID uint, userID uint) error {
+	class, err := c.classRepo.GetByID(classID)
+	if err != nil {
+		return err
+	}
+
+	if class == nil {
+		return errors.New("class not found")
+	}
+
+	if class.OwnerID != userID {
+		return errors.New("unauthorized")
+	}
+
+	enrollment, err := c.enrollRepo.GetEnrollmentByClassIDAndUserID(class.ID, studentID)
+	if err != nil {
+		return err
+	}
+
+	if enrollment == nil {
+		return errors.New("student not enrolled in this class")
+	}
+
+	err = c.enrollRepo.RemoveStudent(class.ID, studentID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *classUseCase) BanStudent(classID uint, studentID uint, userID uint) error {
+	class, err := c.classRepo.GetByID(classID)
+	if err != nil {
+		return err
+	}
+
+	if class == nil {
+		return errors.New("class not found")
+	}
+
+	if class.OwnerID != userID {
+		return errors.New("unauthorized")
+	}
+
+	enrollment, err := c.enrollRepo.GetEnrollmentByClassIDAndUserID(class.ID, studentID)
+	if err != nil {
+		return err
+	}
+
+	if enrollment == nil {
+		return errors.New("student not enrolled in this class")
+	}
+
+	if enrollment.Role == "teacher" {
+		return errors.New("cannot ban a teacher")
+	}
+
+	enrollment.Status = "banned"
+	err = c.enrollRepo.UpdateStatus(enrollment)
 	if err != nil {
 		return err
 	}
