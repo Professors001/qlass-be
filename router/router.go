@@ -121,7 +121,6 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	// Submissions
 	submissionRouter := r.Group("/submissions")
 	submissionRouter.Use(middleware.AuthorizeJWT(jwtService))
-	submissionRouter.POST("", handler.SubmissionHandler.CreateSubmission)
 	submissionRouter.GET("/:id", handler.SubmissionHandler.GetSubmission)
 	submissionRouter.GET("/material/:class_material_id", handler.SubmissionHandler.GetSubmissonByMaterialIDAndStudentID)
 	submissionRouter.PUT("", middleware.AuthorizeJWT(jwtService), handler.SubmissionHandler.StudentSaveSubmission)

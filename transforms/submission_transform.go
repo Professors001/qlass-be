@@ -56,3 +56,12 @@ func EntityToTeacherGetSubmissionResponseDto(submission *entities.Submission, at
 		StudentProfileImg: "https://ui-avatars.com/api/?name=" + student.FirstName + "+" + student.LastName,
 	}
 }
+
+func CreateBaseSubmissionEntity(studentID uint, classMaterialID uint) *entities.Submission {
+	return &entities.Submission{
+		ClassMaterialID: classMaterialID,
+		UserID:          studentID,
+		Status:          "draft",
+		IsLate:          false,
+	}
+}

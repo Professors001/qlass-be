@@ -110,13 +110,23 @@ func (u *submissionUseCase) GetSubmissionByID(id uint) (*dtos.GetSubmissionRespo
 
 func (u *submissionUseCase) GetSubmissonByMaterialIDAndStudentID(classMaterialID uint, studentID uint) (*dtos.GetSubmissionResponseDto, error) {
 	val, err := u.submissionRepo.GetByClassMaterialIDAndStudentID(classMaterialID, studentID)
-
 	if err != nil {
 		return nil, err
 	}
 
 	if val == nil {
-		return nil, nil
+		// Create a new "Draft/Assigned" submission
+		submission := transforms.CreateBaseSubmissionEntity(studentID, classMaterialID)
+
+		err = u.submissionRepo.Create(submission)
+		if err != nil {
+			val, retryErr := u.submissionRepo.GetByClassMaterialIDAndStudentID(classMaterialID, studentID)
+			if retryErr != nil || val == nil {
+				return nil, err
+			}
+		} else {
+			val = submission
+		}
 	}
 
 	attachments, err := u.attachmentUseCase.GetAttachmentsByOwner("submission", val.ID)

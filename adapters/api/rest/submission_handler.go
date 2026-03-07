@@ -20,34 +20,6 @@ func NewSubmissionHandler(submissionUseCase usecases.SubmissionUseCase) *Submiss
 	}
 }
 
-func (h *SubmissionHandler) CreateSubmission(c *gin.Context) {
-	val, exists := c.Get("currentUser")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, dtos.GlobalErrorResponse{Error: "UNAUTHORIZED", Message: "User context not found"})
-		return
-	}
-
-	claims, ok := val.(*middleware.JWTCustomClaims)
-	if !ok {
-		c.JSON(http.StatusUnauthorized, dtos.GlobalErrorResponse{Error: "UNAUTHORIZED", Message: "Invalid user context"})
-		return
-	}
-
-	var req dtos.CreateSubmissionDto
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, dtos.GlobalErrorResponse{Error: "BAD_REQUEST", Message: err.Error()})
-		return
-	}
-
-	err := h.SubmissionUseCase.CreateSubmission(req, claims.UserId)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, dtos.GlobalErrorResponse{Error: "INTERNAL_SERVER_ERROR", Message: err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusCreated, gin.H{"message": "Submission created successfully"})
-}
-
 func (h *SubmissionHandler) GetSubmission(c *gin.Context) {
 	submissionId := c.Param("id")
 
