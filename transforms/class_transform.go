@@ -6,12 +6,7 @@ import (
 	"strconv"
 )
 
-func EntityToClassDetailsDto(class entities.Class) dtos.ClassDetailsDto {
-	var ownerProfileImg string
-	if class.Owner.ProfileImgAttachment != nil {
-		ownerProfileImg = class.Owner.ProfileImgAttachment.ObjectKey
-	}
-
+func EntityToClassDetailsDto(class entities.Class, ownerProfileImg string) dtos.ClassDetailsDto {
 	return dtos.ClassDetailsDto{
 		Id:              strconv.FormatUint(uint64(class.ID), 10),
 		Name:            class.Name,

@@ -27,8 +27,8 @@ func (r *postgresClassRepository) Create(class *entities.Class) error {
 func (r *postgresClassRepository) GetByID(id uint) (*entities.Class, error) {
 	var class entities.Class
 
-	// SELECT * FROM classes WHERE id = ?
-	if err := r.db.Preload("Owner").Where("id = ?", id).First(&class).Error; err != nil {
+	// Added nested preload for ProfileImgAttachment
+	if err := r.db.Preload("Owner.ProfileImgAttachment").Where("id = ?", id).First(&class).Error; err != nil {
 		return nil, err
 	}
 	return &class, nil
@@ -37,8 +37,8 @@ func (r *postgresClassRepository) GetByID(id uint) (*entities.Class, error) {
 func (r *postgresClassRepository) GetByInviteCode(code string) (*entities.Class, error) {
 	var class entities.Class
 
-	// SELECT * FROM classes WHERE invite_code = ?
-	if err := r.db.Preload("Owner").Where("invite_code = ?", code).First(&class).Error; err != nil {
+	// Added nested preload for ProfileImgAttachment
+	if err := r.db.Preload("Owner.ProfileImgAttachment").Where("invite_code = ?", code).First(&class).Error; err != nil {
 		return nil, err
 	}
 	return &class, nil
@@ -47,7 +47,8 @@ func (r *postgresClassRepository) GetByInviteCode(code string) (*entities.Class,
 func (r *postgresClassRepository) GetByUserID(userID uint) ([]entities.ClassEnrollment, error) {
 	var enrollments []entities.ClassEnrollment
 
-	if err := r.db.Preload("Class.Owner").Where("user_id = ?", userID).Order("created_at desc").Find(&enrollments).Error; err != nil {
+	// Added nested preload: Class -> Owner -> ProfileImgAttachment
+	if err := r.db.Preload("Class.Owner.ProfileImgAttachment").Where("user_id = ?", userID).Order("created_at desc").Find(&enrollments).Error; err != nil {
 		return nil, err
 	}
 	return enrollments, nil

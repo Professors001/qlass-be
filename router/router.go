@@ -41,7 +41,7 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 
 	classRepo := databases.NewPostgresClassRepository(db)
 	enrollRepo := databases.NewPostgresEnrollRepository(db)
-	classUseCase := usecases.NewClassUseCase(classRepo, enrollRepo)
+	classUseCase := usecases.NewClassUseCase(classRepo, enrollRepo, userRepo, attachmentUseCase)
 	classHandler := rest.NewClassHandler(classUseCase)
 
 	quizRepo := databases.NewPostgresQuizRepository(db)
