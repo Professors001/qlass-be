@@ -34,3 +34,16 @@ type TeacherSaveSubmissionDto struct {
 	Score        int    `json:"score" binding:"required"`
 	Feedback     string `json:"feedback"`
 }
+
+type TeacherGetSubmissionResponseDto struct {
+	GetSubmissionResponseDto
+
+	StudentFirstName  string `json:"student_first_name"`
+	StudentLastName   string `json:"student_last_name"`
+	StudentEmail      string `json:"student_email"`
+	StudentProfileImg string `json:"student_profile_img"`
+}
+
+type GetSubmissionsByClassMaterialResponseDto struct {
+	Submissions []*TeacherGetSubmissionResponseDto `json:"submissions"`
+}

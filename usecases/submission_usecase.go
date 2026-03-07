@@ -14,7 +14,7 @@ type SubmissionUseCase interface {
 	CreateSubmission(dto dtos.CreateSubmissionDto, studentID uint) error
 	GetSubmissionByID(id uint) (*dtos.GetSubmissionResponseDto, error)
 	GetSubmissonByMaterialIDAndStudentID(classMaterialID uint, studentID uint) (*dtos.GetSubmissionResponseDto, error)
-	GetSubmissionsByMaterialID(classMaterialID uint) ([]*dtos.GetSubmissionResponseDto, error)
+	GetSubmissionsByMaterialID(classMaterialID uint, teacherId uint) ([]*dtos.TeacherGetSubmissionResponseDto, error)
 	GetSubmissionsByStudentID(studentID uint) ([]*dtos.GetSubmissionResponseDto, error)
 	StudentSaveSubmission(dto dtos.StudentSaveSubmissionDto, studentID uint) error
 	TeacherSaveSubmission(dto dtos.TeacherSaveSubmissionDto, teacherID uint) error
@@ -24,16 +24,18 @@ type submissionUseCase struct {
 	classMaterialRepo repositories.ClassMaterialRepository
 	attachmentRepo    repositories.AttachmentRepository
 	classRepo         repositories.ClassRepository
+	userRepo          repositories.UserRepository
 	attachmentUseCase AttachmentUseCase
 }
 
-func NewSubmissionUseCase(submissionRepo repositories.SubmissionRepository, classMaterialRepo repositories.ClassMaterialRepository, attachmentRepo repositories.AttachmentRepository, attachmentUseCase AttachmentUseCase, classRepo repositories.ClassRepository) SubmissionUseCase {
+func NewSubmissionUseCase(submissionRepo repositories.SubmissionRepository, classMaterialRepo repositories.ClassMaterialRepository, attachmentRepo repositories.AttachmentRepository, attachmentUseCase AttachmentUseCase, classRepo repositories.ClassRepository, userRepo repositories.UserRepository) SubmissionUseCase {
 	return &submissionUseCase{
 		submissionRepo:    submissionRepo,
 		classMaterialRepo: classMaterialRepo,
 		attachmentRepo:    attachmentRepo,
 		attachmentUseCase: attachmentUseCase,
 		classRepo:         classRepo,
+		userRepo:          userRepo,
 	}
 }
 
@@ -125,8 +127,32 @@ func (u *submissionUseCase) GetSubmissonByMaterialIDAndStudentID(classMaterialID
 	return transforms.EntityToGetSubmissionResponseDto(val, attachments), nil
 }
 
-func (u *submissionUseCase) GetSubmissionsByMaterialID(classMaterialID uint) ([]*dtos.GetSubmissionResponseDto, error) {
-	return nil, nil
+func (u *submissionUseCase) GetSubmissionsByMaterialID(classMaterialID uint, teacherId uint) ([]*dtos.TeacherGetSubmissionResponseDto, error) {
+	submissions, err := u.submissionRepo.GetByClassMaterialID(classMaterialID)
+	if err != nil {
+		return nil, err
+	}
+
+	var submissionDtos []*dtos.TeacherGetSubmissionResponseDto
+	for _, submission := range submissions {
+		if submission.Status != "draft" && submission.SubmittedAt != nil {
+			attachments, err := u.attachmentUseCase.GetAttachmentsByOwner("submission", submission.ID)
+			if err != nil {
+				return nil, err
+			}
+
+			log.Println("Submission ID:", submission.ID, "has", len(attachments), "attachments")
+
+			student, err := u.userRepo.GetByID(submission.UserID)
+			if err != nil {
+				return nil, err
+			}
+
+			submissionDtos = append(submissionDtos, transforms.EntityToTeacherGetSubmissionResponseDto(submission, attachments, student))
+		}
+
+	}
+	return submissionDtos, nil
 }
 
 func (u *submissionUseCase) GetSubmissionsByStudentID(studentID uint) ([]*dtos.GetSubmissionResponseDto, error) {
