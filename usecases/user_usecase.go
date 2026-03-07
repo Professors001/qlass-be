@@ -15,6 +15,7 @@ import (
 	"qlass-be/middleware"
 	"qlass-be/transforms"
 	"qlass-be/utils"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -178,30 +179,41 @@ func (u *userUseCase) RegisterSecondStep(ctx context.Context, req *dtos.Register
 }
 
 func (u *userUseCase) Login(ctx context.Context, req *dtos.LoginRequestDto) (*dtos.LoginResponseDto, error) {
-	// Retrieve user by email
-	user, err := u.userRepo.GetByUniID(req.UniversityID)
+	var user *entities.User
+	var err error
+
+	if strings.Contains(req.Identifier, "@") {
+		log.Println("Login attempt with Email:", req.Identifier)
+		user, err = u.userRepo.GetByEmail(req.Identifier)
+	} else {
+		log.Println("Login attempt with University ID:", req.Identifier)
+		user, err = u.userRepo.GetByUniID(req.Identifier)
+	}
+
 	if err != nil {
 		return nil, errors.New("This Account is not registered")
 	}
 
-	// Compare password
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password))
 	if err != nil {
 		return nil, errors.New("Incorrect password")
 	}
 
-	userDisplay := transforms.UserEntityToUserDisplayResponse(user, "")
-
-	if user.ProfileImgAttachmentID != nil {
-		attachment, err := u.attachmentUseCase.GetAttachmentByID(*user.ProfileImgAttachmentID)
-
-		if err != nil {
-			log.Println("Error getting attachment:", err)
+	var profileImgURL string
+	if user.ProfileImgAttachment != nil && user.ProfileImgAttachment.ObjectKey != "" {
+		url, err := u.attachmentUseCase.GenerateFileURL(user.ProfileImgAttachment.ObjectKey)
+		if err == nil {
+			profileImgURL = url
 		} else {
-			log.Println("Img URL:", attachment.FileURL)
-			userDisplay = transforms.UserEntityToUserDisplayResponse(user, attachment.FileURL)
+			log.Println("Error generating profile image URL:", err)
 		}
 	}
+
+	if profileImgURL == "" {
+		profileImgURL = "https://ui-avatars.com/api/?name=" + user.FirstName + "+" + user.LastName
+	}
+
+	userDisplay := transforms.UserEntityToUserDisplayResponse(user, profileImgURL)
 
 	token, err := u.jwtService.GenerateToken(user.ID, user.Role)
 	if err != nil {

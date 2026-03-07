@@ -46,8 +46,8 @@ type UserDisplayData struct {
 }
 
 type LoginRequestDto struct {
-	UniversityID string `json:"university_id" validate:"required"`
-	Password     string `json:"password" validate:"required"`
+	Identifier string `json:"identifier" validate:"required"` // Accepts Email OR University ID
+	Password   string `json:"password" validate:"required"`
 }
 
 type LoginResponseDto struct {

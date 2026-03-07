@@ -158,9 +158,22 @@ func (u *submissionUseCase) GetSubmissionsByMaterialID(classMaterialID uint, tea
 				return nil, err
 			}
 
-			submissionDtos = append(submissionDtos, transforms.EntityToTeacherGetSubmissionResponseDto(submission, attachments, student))
-		}
+			var profileImgURL string
+			if student.ProfileImgAttachment != nil && student.ProfileImgAttachment.ObjectKey != "" {
+				url, err := u.attachmentUseCase.GenerateFileURL(student.ProfileImgAttachment.ObjectKey)
+				if err == nil {
+					profileImgURL = url
+				} else {
+					log.Println("Error generating profile image URL:", err)
+				}
+			}
 
+			if profileImgURL == "" {
+				profileImgURL = "https://ui-avatars.com/api/?name=" + student.FirstName + "+" + student.LastName
+			}
+
+			submissionDtos = append(submissionDtos, transforms.EntityToTeacherGetSubmissionResponseDto(submission, attachments, student, profileImgURL))
+		}
 	}
 	return submissionDtos, nil
 }

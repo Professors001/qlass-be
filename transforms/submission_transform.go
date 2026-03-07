@@ -36,7 +36,7 @@ func EntityToGetSubmissionResponseDto(submission *entities.Submission, attachmen
 	}
 }
 
-func EntityToTeacherGetSubmissionResponseDto(submission *entities.Submission, attachments []*dtos.GetAttachmentResponseDto, student *entities.User) *dtos.TeacherGetSubmissionResponseDto {
+func EntityToTeacherGetSubmissionResponseDto(submission *entities.Submission, attachments []*dtos.GetAttachmentResponseDto, student *entities.User, profileImgURL string) *dtos.TeacherGetSubmissionResponseDto {
 	return &dtos.TeacherGetSubmissionResponseDto{
 		GetSubmissionResponseDto: dtos.GetSubmissionResponseDto{
 			ID:              submission.ID,
@@ -53,7 +53,7 @@ func EntityToTeacherGetSubmissionResponseDto(submission *entities.Submission, at
 		StudentFirstName:  student.FirstName,
 		StudentLastName:   student.LastName,
 		StudentEmail:      student.Email,
-		StudentProfileImg: "https://ui-avatars.com/api/?name=" + student.FirstName + "+" + student.LastName,
+		StudentProfileImg: profileImgURL, 
 	}
 }
 

@@ -2,6 +2,7 @@ package usecases
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"mime/multipart"
 	"qlass-be/adapters/storage"
@@ -27,6 +28,7 @@ type AttachmentUseCase interface {
 	GetAttachmentsByOwner(ownerType string, ownerID uint) ([]*dtos.GetAttachmentResponseDto, error)
 	UpdateAttachment(dto *dtos.UpdateAttachmentDto) error
 	DeleteAttachment(id uint) error
+	GenerateFileURL(objectKey string) (string, error)
 }
 
 type attachmentUseCase struct {
@@ -146,4 +148,12 @@ func (u *attachmentUseCase) enrichAttachment(attachment *entities.Attachment) (*
 	}
 
 	return transforms.ToGetAttachmentResponseDto(attachment, fileURL), nil
+}
+
+func (u *attachmentUseCase) GenerateFileURL(objectKey string) (string, error) {
+	if objectKey == "" {
+		return "", errors.New("empty object key")
+	}
+	bucketName := u.cfg.MinioBucketName
+	return u.storageService.GetPresignedURL(context.Background(), bucketName, objectKey, time.Hour*24)
 }
