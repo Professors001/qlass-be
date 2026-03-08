@@ -330,3 +330,24 @@ func (c *classUseCase) getOwnerProfileImg(owner *entities.User) string {
 
 	return profileImgURL
 }
+
+func (c *classUseCase) getOwnerProfileImgByUserID(userID uint) string {
+	owner, err := c.userRepo.GetByID(userID)
+	if err != nil || owner == nil {
+		return ""
+	}
+
+	var profileImgURL string
+	if owner.ProfileImgAttachment != nil && owner.ProfileImgAttachment.ObjectKey != "" {
+		url, err := c.attachmentUseCase.GenerateFileURL(owner.ProfileImgAttachment.ObjectKey)
+		if err == nil {
+			profileImgURL = url
+		}
+	}
+
+	if profileImgURL == "" {
+		profileImgURL = "https://ui-avatars.com/api/?name=" + owner.FirstName + "+" + owner.LastName
+	}
+
+	return profileImgURL
+}

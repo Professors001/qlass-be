@@ -52,7 +52,8 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	classMaterialHandler := rest.NewMaterialHandler(classMaterialUseCase)
 
 	submissionRepo := databases.NewPostgresSubmissionRepository(db)
-	submissionUseCase := usecases.NewSubmissionUseCase(submissionRepo, classMaterialRepo, attachmentRepo, attachmentUseCase, classRepo, userRepo)
+	submissionUseCase := usecases.NewSubmissionUseCase(
+		submissionRepo, classMaterialRepo, attachmentRepo, attachmentUseCase, classRepo, userUseCase, userRepo)
 	submissionHandler := rest.NewSubmissionHandler(submissionUseCase)
 
 	quizQuestionRepo := databases.NewPostgresQuizQuestionRepository(db)

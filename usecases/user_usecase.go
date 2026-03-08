@@ -26,6 +26,7 @@ type UserUseCase interface {
 	ForgetPasswordStep1(ctx context.Context, req *dtos.ForgetPasswordStep1RequestDto) (*dtos.ForgetPasswordStep1ResponseDto, error)
 	ForgetPasswordStep2(ctx context.Context, req *dtos.ForgetPasswordStep2RequestDto) (*dtos.ForgetPasswordStep2ResponseDto, error)
 	AdminUpdateUser(req *dtos.AdminUpdateUserRequestDto) error
+	GetProfileImgUrlByUserID(userID uint) string
 }
 
 type userUseCase struct {
@@ -375,4 +376,25 @@ func (u *userUseCase) AdminUpdateUser(req *dtos.AdminUpdateUserRequestDto) error
 	}
 
 	return nil
+}
+
+func (u *userUseCase) GetProfileImgUrlByUserID(userID uint) string {
+	owner, err := u.userRepo.GetByID(userID)
+	if err != nil || owner == nil {
+		return ""
+	}
+
+	var profileImgURL string
+	if owner.ProfileImgAttachment != nil && owner.ProfileImgAttachment.ObjectKey != "" {
+		url, err := u.attachmentUseCase.GenerateFileURL(owner.ProfileImgAttachment.ObjectKey)
+		if err == nil {
+			profileImgURL = url
+		}
+	}
+
+	if profileImgURL == "" {
+		profileImgURL = "https://ui-avatars.com/api/?name=" + owner.FirstName + "+" + owner.LastName
+	}
+
+	return profileImgURL
 }

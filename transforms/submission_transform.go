@@ -21,18 +21,21 @@ func CreateToSubmissionEntity(dto *dtos.CreateSubmissionDto, studentID uint, isL
 	return baseEntity
 }
 
-func EntityToGetSubmissionResponseDto(submission *entities.Submission, attachments []*dtos.GetAttachmentResponseDto) *dtos.GetSubmissionResponseDto {
+func EntityToGetSubmissionResponseDto(submission *entities.Submission, attachments []*dtos.GetAttachmentResponseDto, profileImgURL string) *dtos.GetSubmissionResponseDto {
 	return &dtos.GetSubmissionResponseDto{
-		ID:              submission.ID,
-		ClassMaterialID: submission.ClassMaterialID,
-		UserID:          submission.UserID,
-		StudentComment:  submission.StudentComment,
-		Score:           submission.Score,
-		TeacherFeedback: submission.TeacherFeedback,
-		Status:          submission.Status,
-		Attachments:     attachments,
-		CreatedAt:       submission.CreatedAt,
-		UpdatedAt:       submission.UpdatedAt,
+		ID:               submission.ID,
+		ClassMaterialID:  submission.ClassMaterialID,
+		UserID:           submission.UserID,
+		StudentFirstName: submission.User.FirstName,
+		StudentLastName:  submission.User.LastName,
+		StudentImg:       profileImgURL,
+		StudentComment:   submission.StudentComment,
+		Score:            submission.Score,
+		TeacherFeedback:  submission.TeacherFeedback,
+		Status:           submission.Status,
+		Attachments:      attachments,
+		CreatedAt:        submission.CreatedAt,
+		UpdatedAt:        submission.UpdatedAt,
 	}
 }
 
@@ -53,7 +56,7 @@ func EntityToTeacherGetSubmissionResponseDto(submission *entities.Submission, at
 		StudentFirstName:  student.FirstName,
 		StudentLastName:   student.LastName,
 		StudentEmail:      student.Email,
-		StudentProfileImg: profileImgURL, 
+		StudentProfileImg: profileImgURL,
 	}
 }
 

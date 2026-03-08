@@ -10,16 +10,19 @@ type CreateSubmissionDto struct {
 }
 
 type GetSubmissionResponseDto struct {
-	ID              uint                        `json:"id"`
-	ClassMaterialID uint                        `json:"class_material_id"`
-	UserID          uint                        `json:"student_id"`
-	StudentComment  string                      `json:"student_comment"`
-	Status          string                      `json:"status"`
-	Score           *int                        `json:"score"`
-	TeacherFeedback string                      `json:"teacher_feedback"`
-	CreatedAt       time.Time                   `json:"created_at"`
-	UpdatedAt       time.Time                   `json:"updated_at"`
-	Attachments     []*GetAttachmentResponseDto `json:"attachments"`
+	ID               uint                        `json:"id"`
+	ClassMaterialID  uint                        `json:"class_material_id"`
+	UserID           uint                        `json:"student_id"`
+	StudentFirstName string                      `json:"student_first_name"`
+	StudentLastName  string                      `json:"student_last_name"`
+	StudentImg       string                      `json:"student_profile_img"`
+	StudentComment   string                      `json:"student_comment"`
+	Status           string                      `json:"status"`
+	Score            *int                        `json:"score"`
+	TeacherFeedback  string                      `json:"teacher_feedback"`
+	CreatedAt        time.Time                   `json:"created_at"`
+	UpdatedAt        time.Time                   `json:"updated_at"`
+	Attachments      []*GetAttachmentResponseDto `json:"attachments"`
 }
 
 type StudentSaveSubmissionDto struct {

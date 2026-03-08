@@ -25,16 +25,25 @@ type submissionUseCase struct {
 	attachmentRepo    repositories.AttachmentRepository
 	classRepo         repositories.ClassRepository
 	userRepo          repositories.UserRepository
+	userUsecase       UserUseCase
 	attachmentUseCase AttachmentUseCase
 }
 
-func NewSubmissionUseCase(submissionRepo repositories.SubmissionRepository, classMaterialRepo repositories.ClassMaterialRepository, attachmentRepo repositories.AttachmentRepository, attachmentUseCase AttachmentUseCase, classRepo repositories.ClassRepository, userRepo repositories.UserRepository) SubmissionUseCase {
+func NewSubmissionUseCase(
+	submissionRepo repositories.SubmissionRepository,
+	classMaterialRepo repositories.ClassMaterialRepository,
+	attachmentRepo repositories.AttachmentRepository,
+	attachmentUseCase AttachmentUseCase,
+	classRepo repositories.ClassRepository,
+	userUsecase UserUseCase,
+	userRepo repositories.UserRepository) SubmissionUseCase {
 	return &submissionUseCase{
 		submissionRepo:    submissionRepo,
 		classMaterialRepo: classMaterialRepo,
 		attachmentRepo:    attachmentRepo,
 		attachmentUseCase: attachmentUseCase,
 		classRepo:         classRepo,
+		userUsecase:       userUsecase,
 		userRepo:          userRepo,
 	}
 }
@@ -105,7 +114,9 @@ func (u *submissionUseCase) GetSubmissionByID(id uint) (*dtos.GetSubmissionRespo
 		return nil, err
 	}
 
-	return transforms.EntityToGetSubmissionResponseDto(val, attachments), nil
+	imgUrl := u.userUsecase.GetProfileImgUrlByUserID(val.UserID)
+
+	return transforms.EntityToGetSubmissionResponseDto(val, attachments, imgUrl), nil
 }
 
 func (u *submissionUseCase) GetSubmissonByMaterialIDAndStudentID(classMaterialID uint, studentID uint) (*dtos.GetSubmissionResponseDto, error) {
@@ -129,12 +140,14 @@ func (u *submissionUseCase) GetSubmissonByMaterialIDAndStudentID(classMaterialID
 		}
 	}
 
+	imgUrl := u.userUsecase.GetProfileImgUrlByUserID(val.UserID)
+
 	attachments, err := u.attachmentUseCase.GetAttachmentsByOwner("submission", val.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	return transforms.EntityToGetSubmissionResponseDto(val, attachments), nil
+	return transforms.EntityToGetSubmissionResponseDto(val, attachments, imgUrl), nil
 }
 
 func (u *submissionUseCase) GetSubmissionsByMaterialID(classMaterialID uint, teacherId uint) ([]*dtos.TeacherGetSubmissionResponseDto, error) {
