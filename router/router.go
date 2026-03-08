@@ -48,7 +48,8 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	quizGameLogRepo := databases.NewPostgresQuizGameLogRepository(db)
 
 	classMaterialRepo := databases.NewPostgresClassMaterialRepository(db)
-	classMaterialUseCase := usecases.NewClassMaterialUseCase(classMaterialRepo, classRepo, attachmentRepo, attachmentUseCase, quizGameLogRepo, quizRepo)
+	classMaterialUseCase := usecases.NewClassMaterialUseCase(
+		classMaterialRepo, classRepo, attachmentRepo, attachmentUseCase, quizGameLogRepo, userUseCase, quizRepo)
 	classMaterialHandler := rest.NewMaterialHandler(classMaterialUseCase)
 
 	submissionRepo := databases.NewPostgresSubmissionRepository(db)

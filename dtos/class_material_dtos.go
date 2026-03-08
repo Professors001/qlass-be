@@ -51,6 +51,13 @@ type GetClassMaterialDto struct {
 	Points      *int                        `json:"points"`
 	DueAt       *time.Time                  `json:"due_at"`
 	QuizGameLog *QuizGameLogDto             `json:"quiz_game_log,omitempty"`
+	CreatedBy   CreatedByDto                `json:"created_by"`
+}
+
+type CreatedByDto struct {
+	ID       uint   `json:"id"`
+	FullName string `json:"full_name"`
+	ImgURL   string `json:"img_url,omitempty"`
 }
 
 type QuizGameLogDto struct {

@@ -28,12 +28,18 @@ type classMaterialUseCase struct {
 	classRepo         repositories.ClassRepository
 	attachmentRepo    repositories.AttachmentRepository
 	attachmentUseCase AttachmentUseCase
-
-	quizGameLogRepo repositories.QuizGameLogRepository
-	quizRepo        repositories.QuizRepository
+	userUseCase       UserUseCase
+	quizGameLogRepo   repositories.QuizGameLogRepository
+	quizRepo          repositories.QuizRepository
 }
 
-func NewClassMaterialUseCase(classMaterialRepo repositories.ClassMaterialRepository, classRepo repositories.ClassRepository, attachmentRepo repositories.AttachmentRepository, attachmentUseCase AttachmentUseCase, quizGameLogRepo repositories.QuizGameLogRepository,
+func NewClassMaterialUseCase(
+	classMaterialRepo repositories.ClassMaterialRepository,
+	classRepo repositories.ClassRepository,
+	attachmentRepo repositories.AttachmentRepository,
+	attachmentUseCase AttachmentUseCase,
+	quizGameLogRepo repositories.QuizGameLogRepository,
+	userUseCase UserUseCase,
 	quizRepo repositories.QuizRepository,
 ) ClassMaterialUseCase {
 	return &classMaterialUseCase{
@@ -42,6 +48,7 @@ func NewClassMaterialUseCase(classMaterialRepo repositories.ClassMaterialReposit
 		attachmentRepo:    attachmentRepo,
 		attachmentUseCase: attachmentUseCase,
 		quizGameLogRepo:   quizGameLogRepo,
+		userUseCase:       userUseCase,
 		quizRepo:          quizRepo,
 	}
 }
@@ -188,6 +195,12 @@ func (u *classMaterialUseCase) GetMaterialByID(id uint) (*dtos.GetClassMaterialD
 	}
 
 	res := transforms.EntityToGetClassMaterialDtoWithAttachments(material, attachmentDtos)
+
+	res.CreatedBy = dtos.CreatedByDto{
+		ID:       material.Class.OwnerID,
+		FullName: material.Class.Owner.FirstName + " " + material.Class.Owner.LastName,
+		ImgURL:   u.userUseCase.GetProfileImgUrlByUserID(material.Class.OwnerID),
+	}
 
 	if material.Type == "quiz" {
 		logs, err := u.quizGameLogRepo.GetByClassMaterialID(material.ID)

@@ -23,14 +23,23 @@ func (r *postgresClassMaterialRepository) Create(classMaterial *entities.ClassMa
 }
 func (r *postgresClassMaterialRepository) GetByID(id uint) (*entities.ClassMaterial, error) {
 	var classMaterial entities.ClassMaterial
-	if err := r.db.First(&classMaterial, id).Error; err != nil {
+	err := r.db.Preload("Class.Owner.ProfileImgAttachment").
+		First(&classMaterial, id).Error
+
+	if err != nil {
 		return nil, err
 	}
 	return &classMaterial, nil
 }
+
 func (r *postgresClassMaterialRepository) GetByClassID(classID uint) ([]*entities.ClassMaterial, error) {
 	var classMaterials []*entities.ClassMaterial
-	if err := r.db.Where("class_id = ?", classID).Find(&classMaterials).Error; err != nil {
+	err := r.db.Preload("Class.Owner.ProfileImgAttachment").
+		Where("class_id = ?", classID).
+		Order("created_at desc").
+		Find(&classMaterials).Error
+
+	if err != nil {
 		return nil, err
 	}
 	return classMaterials, nil
