@@ -225,6 +225,8 @@ func (u *submissionUseCase) StudentSaveSubmission(req dtos.StudentSaveSubmission
 
 	if req.Status == "draft" && submission.Status != "draft" {
 		submission.Status = "draft"
+		submission.SubmittedAt = nil
+		submission.IsLate = false
 	}
 
 	if req.Status == "submit" && (submission.Status != "submit" && submission.SubmittedAt == nil) {
