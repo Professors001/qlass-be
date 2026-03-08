@@ -40,6 +40,7 @@ func TempRegisterDataDtoToUserEntity(dto dtos.TempRegisterDataDto) *entities.Use
 
 func UserEntityToUserDisplayResponse(u *entities.User, imgUrl string) *dtos.UserDisplayData {
 	return &dtos.UserDisplayData{
+		ID:            u.ID,
 		UniversityID:  u.UniversityID,
 		Email:         u.Email,
 		ProfileImgUrl: imgUrl,

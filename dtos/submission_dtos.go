@@ -41,10 +41,10 @@ type TeacherSaveSubmissionDto struct {
 type TeacherGetSubmissionResponseDto struct {
 	GetSubmissionResponseDto
 
-	StudentFirstName  string `json:"student_first_name"`
-	StudentLastName   string `json:"student_last_name"`
-	StudentEmail      string `json:"student_email"`
-	StudentProfileImg string `json:"student_profile_img"`
+	StudentFirstName    string `json:"student_first_name"`
+	StudentLastName     string `json:"student_last_name"`
+	StudentUniversityID string `json:"student_university_id"`
+	StudentProfileImg   string `json:"student_profile_img"`
 }
 
 type GetSubmissionsByClassMaterialResponseDto struct {

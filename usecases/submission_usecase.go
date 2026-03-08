@@ -14,8 +14,8 @@ type SubmissionUseCase interface {
 	CreateSubmission(dto dtos.CreateSubmissionDto, studentID uint) error
 	GetSubmissionByID(id uint) (*dtos.GetSubmissionResponseDto, error)
 	GetSubmissonByMaterialIDAndStudentID(classMaterialID uint, studentID uint) (*dtos.GetSubmissionResponseDto, error)
-	GetSubmissionsByMaterialID(classMaterialID uint, teacherId uint) ([]*dtos.TeacherGetSubmissionResponseDto, error)
-	GetSubmissionsByStudentID(studentID uint) ([]*dtos.GetSubmissionResponseDto, error)
+	GetSubmissionsByMaterialID(classMaterialID uint, teacherId uint) (*dtos.GetSubmissionsByClassMaterialResponseDto, error)
+	GetSubmissionsByStudentID(studentID uint) (*dtos.GetSubmissionsByClassMaterialResponseDto, error)
 	StudentSaveSubmission(dto dtos.StudentSaveSubmissionDto, studentID uint) error
 	TeacherSaveSubmission(dto dtos.TeacherSaveSubmissionDto, teacherID uint) error
 }
@@ -150,7 +150,8 @@ func (u *submissionUseCase) GetSubmissonByMaterialIDAndStudentID(classMaterialID
 	return transforms.EntityToGetSubmissionResponseDto(val, attachments, imgUrl), nil
 }
 
-func (u *submissionUseCase) GetSubmissionsByMaterialID(classMaterialID uint, teacherId uint) ([]*dtos.TeacherGetSubmissionResponseDto, error) {
+func (u *submissionUseCase) GetSubmissionsByMaterialID(classMaterialID uint, teacherId uint) (
+	*dtos.GetSubmissionsByClassMaterialResponseDto, error) {
 	submissions, err := u.submissionRepo.GetByClassMaterialID(classMaterialID)
 	if err != nil {
 		return nil, err
@@ -188,10 +189,15 @@ func (u *submissionUseCase) GetSubmissionsByMaterialID(classMaterialID uint, tea
 			submissionDtos = append(submissionDtos, transforms.EntityToTeacherGetSubmissionResponseDto(submission, attachments, student, profileImgURL))
 		}
 	}
-	return submissionDtos, nil
+
+	res := &dtos.GetSubmissionsByClassMaterialResponseDto{
+		Submissions: submissionDtos,
+	}
+
+	return res, nil
 }
 
-func (u *submissionUseCase) GetSubmissionsByStudentID(studentID uint) ([]*dtos.GetSubmissionResponseDto, error) {
+func (u *submissionUseCase) GetSubmissionsByStudentID(studentID uint) (*dtos.GetSubmissionsByClassMaterialResponseDto, error) {
 	return nil, nil
 }
 

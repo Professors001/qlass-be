@@ -41,7 +41,7 @@ func (h *SubmissionHandler) GetSubmission(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, submission)
+	c.JSON(http.StatusOK, gin.H{"data": submission})
 }
 
 func (h *SubmissionHandler) GetSubmissonByMaterialIDAndStudentID(c *gin.Context) {

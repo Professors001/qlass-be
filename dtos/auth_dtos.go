@@ -37,6 +37,7 @@ type ResponseRegisterStepTwoDto struct {
 }
 
 type UserDisplayData struct {
+	ID            uint   `json:"id"`
 	UniversityID  string `json:"university_id"`
 	Email         string `json:"email"`
 	ProfileImgUrl string `json:"profile_img_url"`

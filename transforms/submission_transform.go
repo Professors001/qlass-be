@@ -53,10 +53,10 @@ func EntityToTeacherGetSubmissionResponseDto(submission *entities.Submission, at
 			CreatedAt:       submission.CreatedAt,
 			UpdatedAt:       submission.UpdatedAt,
 		},
-		StudentFirstName:  student.FirstName,
-		StudentLastName:   student.LastName,
-		StudentEmail:      student.Email,
-		StudentProfileImg: profileImgURL,
+		StudentFirstName:    student.FirstName,
+		StudentLastName:     student.LastName,
+		StudentUniversityID: student.UniversityID,
+		StudentProfileImg:   profileImgURL,
 	}
 }
 
