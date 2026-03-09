@@ -341,7 +341,9 @@ func (u *gameUseCase) NextStep(ctx context.Context, pin string, hostID uint) (*d
 			return nil, err
 		}
 		var quizSnapshot dtos.GetQuizResponseDto
-		json.Unmarshal([]byte(quizDataJSON), &quizSnapshot)
+		if err := json.Unmarshal([]byte(quizDataJSON), &quizSnapshot); err != nil {
+			return nil, err
+		}
 
 		currentQ := quizSnapshot.Questions[state.CurrentQuestion-1]
 		now := time.Now()
@@ -390,6 +392,11 @@ func (u *gameUseCase) NextStep(ctx context.Context, pin string, hostID uint) (*d
 			})
 		}
 
+		var imageURL string
+		if currentQ.MediaAttachment != nil {
+			imageURL = currentQ.MediaAttachment.FileURL
+		}
+
 		return &dtos.WSEventDto{
 			Type: "NEXT_QUESTION",
 			Payload: dtos.QuestionPayload{
@@ -397,7 +404,7 @@ func (u *gameUseCase) NextStep(ctx context.Context, pin string, hostID uint) (*d
 				TotalQuestions:   state.TotalQuestions,
 				TimeLimitSeconds: currentQ.TimeLimitSeconds,
 				QuestionText:     currentQ.QuestionText,
-				ImageURL:         currentQ.MediaAttachment.FileURL,
+				ImageURL:         imageURL,
 				PointsMultiplier: currentQ.PointsMultiplier,
 				Options:          options,
 			},
