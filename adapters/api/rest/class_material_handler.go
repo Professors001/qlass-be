@@ -5,6 +5,7 @@ import (
 	"qlass-be/dtos"
 	"qlass-be/middleware"
 	"qlass-be/usecases"
+	"qlass-be/utils"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -66,14 +67,20 @@ func (h *MaterialHandler) GetMaterialByID(c *gin.Context) {
 }
 
 func (h *MaterialHandler) GetMaterialsByClassID(c *gin.Context) {
-	idStr := c.Param("class_id")
-	classID, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, dtos.GlobalErrorResponse{Error: "BAD_REQUEST", Message: "Invalid class ID"})
+	id := c.Param("class_id")
+	val, exists := c.Get("currentUser")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, dtos.GlobalErrorResponse{Error: "UNAUTHORIZED", Message: "User context not found"})
 		return
 	}
 
-	res, err := h.materialUseCase.GetMaterialsByClassID(uint(classID))
+	claims, ok := val.(*middleware.JWTCustomClaims)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, dtos.GlobalErrorResponse{Error: "UNAUTHORIZED", Message: "Invalid user context"})
+		return
+	}
+
+	res, err := h.materialUseCase.GetMaterialsByClassID(utils.StringToUint(id), claims.UserId)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, dtos.GlobalErrorResponse{Error: "INTERNAL_ERROR", Message: err.Error()})
 		return

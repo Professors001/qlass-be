@@ -5,10 +5,10 @@ import (
 	"qlass-be/dtos"
 )
 
-func SaveQuizDtoToQuizEntity(dto dtos.SaveQuizDto, userID uint) *entities.Quiz {
+func SaveQuizDtoToQuizEntity(dto dtos.SaveQuizDto, classID uint) *entities.Quiz {
 	return &entities.Quiz{
 		Title:                  dto.Title,
-		UserID:                 userID,
+		ClassID:                classID,
 		Description:            dto.Description,
 		DefaultTimePerQuestion: dto.DefaultTimePerQuestion,
 	}

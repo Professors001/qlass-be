@@ -60,7 +60,7 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	quizQuestionRepo := databases.NewPostgresQuizQuestionRepository(db)
 	quizOptionRepo := databases.NewPostgresQuizOptionRepository(db)
 	quizStudentResponseRepo := databases.NewPostgresQuizStudentResponseRepository(db)
-	quizUseCase := usecases.NewQuizUseCase(quizRepo, quizQuestionRepo, quizOptionRepo, attachmentRepo, attachmentUseCase)
+	quizUseCase := usecases.NewQuizUseCase(classRepo, quizRepo, quizQuestionRepo, quizOptionRepo, attachmentRepo, attachmentUseCase)
 	quizHandler := rest.NewQuizHandler(quizUseCase)
 
 	gameRepo := cache.NewGameRedisRepository(cacheService)
@@ -136,7 +136,7 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	quizRouter.PUT("/:id", handler.QuizHandler.UpdateQuiz)
 	quizRouter.POST("/:id/questions", handler.QuizHandler.SaveQuizQuestion)
 	quizRouter.GET("/:id", handler.QuizHandler.GetQuiz)
-	quizRouter.GET("/user", handler.QuizHandler.GetQuizzesByUserID)
+	quizRouter.GET("/class/:class_id", handler.QuizHandler.GetQuizzesByClassID)
 
 	// Games
 	gameRouter := r.Group("/games")

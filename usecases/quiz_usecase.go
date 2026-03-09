@@ -1,6 +1,7 @@
 package usecases
 
 import (
+	"errors"
 	"qlass-be/domain/repositories"
 	"qlass-be/dtos"
 	"qlass-be/transforms"
@@ -12,10 +13,11 @@ type QuizUseCase interface {
 	UpdateQuiz(dto dtos.SaveQuizDto, quizID uint) error
 	SaveQuizQuestion(dto dtos.SaveQuizQuestionDtoRequest, quizID uint) error
 	GetQuizByID(id uint) (*dtos.GetQuizResponseDto, error)
-	GetQuizzesByUserID(userID uint) ([]*dtos.GetQuizResponseDto, error)
+	GetQuizzesByClassID(classID uint) ([]*dtos.GetQuizResponseDto, error)
 }
 
 type QuizUsecase struct {
+	classRepo         repositories.ClassRepository
 	quizRepo          repositories.QuizRepository
 	quizQuestionRepo  repositories.QuizQuestionRepository
 	quizOptionRepo    repositories.QuizOptionRepository
@@ -23,8 +25,15 @@ type QuizUsecase struct {
 	attachmentUseCase AttachmentUseCase
 }
 
-func NewQuizUseCase(quizRepo repositories.QuizRepository, quizQuestionRepo repositories.QuizQuestionRepository, quizOptionRepo repositories.QuizOptionRepository, attachmentRepo repositories.AttachmentRepository, attachmentUseCase AttachmentUseCase) QuizUseCase {
+func NewQuizUseCase(
+	classRepo repositories.ClassRepository,
+	quizRepo repositories.QuizRepository,
+	quizQuestionRepo repositories.QuizQuestionRepository,
+	quizOptionRepo repositories.QuizOptionRepository,
+	attachmentRepo repositories.AttachmentRepository,
+	attachmentUseCase AttachmentUseCase) QuizUseCase {
 	return &QuizUsecase{
+		classRepo:         classRepo,
 		quizRepo:          quizRepo,
 		quizQuestionRepo:  quizQuestionRepo,
 		quizOptionRepo:    quizOptionRepo,
@@ -35,8 +44,18 @@ func NewQuizUseCase(quizRepo repositories.QuizRepository, quizQuestionRepo repos
 
 // Implementations of the QuizUseCase methods would go here
 func (u *QuizUsecase) CreateQuiz(dto dtos.SaveQuizDto, userID uint) (uint, error) {
+
+	class, err := u.classRepo.GetByID(dto.ClassID)
+	if err != nil {
+		return 0, err
+	}
+
+	if class.OwnerID != userID {
+		return 0, errors.New("only class owner can create class quiz")
+	}
+
 	// Create the Quiz entity
-	quiz := transforms.SaveQuizDtoToQuizEntity(dto, userID)
+	quiz := transforms.SaveQuizDtoToQuizEntity(dto, dto.ClassID)
 
 	quizID, err := u.quizRepo.Create(quiz)
 	if err != nil {
@@ -170,7 +189,7 @@ func (u *QuizUsecase) GetQuizByID(id uint) (*dtos.GetQuizResponseDto, error) {
 
 	quizDto := &dtos.GetQuizResponseDto{
 		ID:                     quiz.ID,
-		UserID:                 quiz.UserID,
+		ClassID:                quiz.ClassID,
 		Title:                  quiz.Title,
 		Description:            quiz.Description,
 		DefaultTimePerQuestion: quiz.DefaultTimePerQuestion,
@@ -180,9 +199,9 @@ func (u *QuizUsecase) GetQuizByID(id uint) (*dtos.GetQuizResponseDto, error) {
 	return quizDto, nil
 }
 
-func (u *QuizUsecase) GetQuizzesByUserID(userID uint) ([]*dtos.GetQuizResponseDto, error) {
+func (u *QuizUsecase) GetQuizzesByClassID(classID uint) ([]*dtos.GetQuizResponseDto, error) {
 
-	quizzes, err := u.quizRepo.GetByUserID(userID)
+	quizzes, err := u.quizRepo.GetByClassID(classID)
 	if err != nil {
 		return nil, err
 	}

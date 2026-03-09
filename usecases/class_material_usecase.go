@@ -8,6 +8,7 @@ import (
 	"qlass-be/dtos"
 	"qlass-be/transforms"
 	"qlass-be/utils"
+	"sort"
 	"time"
 
 	"gorm.io/datatypes"
@@ -17,7 +18,7 @@ type ClassMaterialUseCase interface {
 	CreateClassMaterial(dto *dtos.CreateClassMaterialDto, ownerID uint) error
 	CreateQuizMaterial(dto dtos.CreateQuizClassMaterialDto) error
 	GetMaterialByID(id uint) (*dtos.GetClassMaterialDto, error)
-	GetMaterialsByClassID(classID uint) ([]*dtos.GetThumnailClassMaterialDto, error)
+	GetMaterialsByClassID(classID uint, userID uint) ([]*dtos.GetThumnailClassMaterialDto, error)
 	UpdatePostClassMaterial(dto *dtos.UpdatePostClassMaterialDto, ownerID uint) error
 	UpdateAssignmentClassMaterial(dto *dtos.UpdateAssignmentClassMaterialDto, ownerID uint) error
 	UpdateQuizClassMaterial(dto *dtos.UpdateQuizClassMaterialDto, ownerID uint) error
@@ -112,12 +113,13 @@ func (u *classMaterialUseCase) CreateQuizMaterial(dto dtos.CreateQuizClassMateri
 		Description: dto.Description,
 		Points:      dto.Points,
 		DueAt:       dto.DueAt,
-		IsPublished: dto.Action == "publish",
+		IsPublished: false, // Default to draft; will be updated if Action is "publish"
 	}
 
 	if dto.Action == "publish" {
 		now := time.Now()
 		material.PublishedAt = &now
+		material.IsPublished = true
 	}
 
 	if err := u.classMaterialRepo.Create(material); err != nil {
@@ -157,7 +159,7 @@ func (u *classMaterialUseCase) CreateQuizMaterial(dto dtos.CreateQuizClassMateri
 
 	snapshotDto := dtos.GetQuizResponseDto{
 		ID:                     quiz.ID,
-		UserID:                 quiz.UserID,
+		ClassID:                quiz.ClassID,
 		Title:                  quiz.Title,
 		Description:            quiz.Description,
 		DefaultTimePerQuestion: quiz.DefaultTimePerQuestion,
@@ -221,14 +223,52 @@ func (u *classMaterialUseCase) GetMaterialByID(id uint) (*dtos.GetClassMaterialD
 	return res, nil
 }
 
-func (u *classMaterialUseCase) GetMaterialsByClassID(classID uint) ([]*dtos.GetThumnailClassMaterialDto, error) {
+func (u *classMaterialUseCase) GetMaterialsByClassID(classID uint, userID uint) ([]*dtos.GetThumnailClassMaterialDto, error) {
+	// 1. Fetch the class to check ownership
+	class, err := u.classRepo.GetByID(classID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. Fetch all materials for this class
 	materials, err := u.classMaterialRepo.GetByClassID(classID)
 	if err != nil {
 		return nil, err
 	}
 
-	response := make([]*dtos.GetThumnailClassMaterialDto, 0, len(materials))
-	for _, material := range materials {
+	isOwner := class.OwnerID == userID
+	var filteredMaterials []*entities.ClassMaterial
+
+	// 3. Filtering Logic
+	if isOwner {
+		// Teacher sees everything (Drafts + Published)
+		filteredMaterials = materials
+	} else {
+		// Students only see Published items
+		for _, m := range materials {
+			if m.IsPublished {
+				filteredMaterials = append(filteredMaterials, m)
+			}
+		}
+	}
+
+	// 4. Sorting Logic: "Today First" (Latest PublishedAt first)
+	sort.Slice(filteredMaterials, func(i, j int) bool {
+		// If someone doesn't have a PublishedAt (like a draft), move it to the end
+		if filteredMaterials[i].PublishedAt == nil {
+			return false
+		}
+		if filteredMaterials[j].PublishedAt == nil {
+			return true
+		}
+
+		// Sort by time descending (Today/Newest first)
+		return filteredMaterials[i].PublishedAt.After(*filteredMaterials[j].PublishedAt)
+	})
+
+	// 5. Transform to DTO
+	response := make([]*dtos.GetThumnailClassMaterialDto, 0, len(filteredMaterials))
+	for _, material := range filteredMaterials {
 		response = append(response, transforms.EntityToGetThumnailClassMaterialDto(material))
 	}
 
@@ -336,10 +376,12 @@ func (u *classMaterialUseCase) handlePublishedState(material *entities.ClassMate
 	if published {
 		// Only set PublishedAt if it wasn't already published to preserve the original publish date
 		if material.PublishedAt == nil {
+			material.IsPublished = true
 			now := time.Now()
 			material.PublishedAt = &now
 		}
 	} else {
+		material.IsPublished = false
 		material.PublishedAt = nil
 	}
 }

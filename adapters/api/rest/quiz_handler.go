@@ -160,7 +160,7 @@ func (h *QuizHandler) GetQuiz(c *gin.Context) {
 	})
 }
 
-func (h *QuizHandler) GetQuizzesByUserID(c *gin.Context) {
+func (h *QuizHandler) GetQuizzesByClassID(c *gin.Context) {
 	val, exists := c.Get("currentUser")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, dtos.GlobalErrorResponse{Error: "UNAUTHORIZED", Message: "User context not found"})
@@ -184,7 +184,9 @@ func (h *QuizHandler) GetQuizzesByUserID(c *gin.Context) {
 		return
 	}
 
-	res, err := h.UseCase.GetQuizzesByUserID(claims.UserId)
+	class_id := c.Param("class_id")
+
+	res, err := h.UseCase.GetQuizzesByClassID(utils.StringToUint(class_id))
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, dtos.GlobalErrorResponse{Error: "INTERNAL_ERROR", Message: err.Error()})
