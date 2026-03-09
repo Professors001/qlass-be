@@ -1008,6 +1008,10 @@ func (u *gameUseCase) StoreGameData(ctx context.Context, pin string) error {
 			continue
 		}
 
+		if userID == state.HostID {
+			continue // Skip host
+		}
+
 		// B. Create/Update Submission
 		// Formula: (PlayerScore / MaxGameScore) * MaterialPoints
 		rawScore := float64(pData.Score)
