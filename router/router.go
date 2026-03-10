@@ -54,7 +54,7 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 
 	submissionRepo := databases.NewPostgresSubmissionRepository(db)
 	submissionUseCase := usecases.NewSubmissionUseCase(
-		submissionRepo, classMaterialRepo, attachmentRepo, attachmentUseCase, classRepo, userUseCase, userRepo)
+		submissionRepo, classMaterialRepo, attachmentRepo, attachmentUseCase, classRepo, enrollRepo, userUseCase, userRepo)
 	submissionHandler := rest.NewSubmissionHandler(submissionUseCase)
 
 	quizQuestionRepo := databases.NewPostgresQuizQuestionRepository(db)
@@ -123,6 +123,8 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	// Submissions
 	submissionRouter := r.Group("/submissions")
 	submissionRouter.Use(middleware.AuthorizeJWT(jwtService))
+	submissionRouter.GET("/class/:class_id", handler.SubmissionHandler.GetStudentSubmissionsByClass)
+	submissionRouter.POST("/scores", handler.SubmissionHandler.GetStudentScores)
 	submissionRouter.GET("/:id", handler.SubmissionHandler.GetSubmission)
 	submissionRouter.GET("/material/:class_material_id", handler.SubmissionHandler.GetSubmissonByMaterialIDAndStudentID)
 	submissionRouter.PUT("", middleware.AuthorizeJWT(jwtService), handler.SubmissionHandler.StudentSaveSubmission)

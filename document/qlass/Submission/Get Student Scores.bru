@@ -1,0 +1,27 @@
+meta {
+  name: Get Student Scores
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{base_url}}/submissions/scores
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoidGVhY2hlciIsImV4cCI6MTc3MzQyODIwOX0.nO0TjFbeHRXPzZzGiDveAkZFwz1cn50gZBuHSzvqrRo
+}
+
+body:json {
+  {
+    "class_id": 1,
+    "student_id": 3
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

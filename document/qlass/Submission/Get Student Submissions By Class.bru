@@ -1,0 +1,20 @@
+meta {
+  name: Get Student Submissions By Class
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{base_url}}/submissions/class/1
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoidGVhY2hlciIsImV4cCI6MTc3MzQyNzI2MH0.llu6KVXH6OhpLRl7SIH2kTPTmASy_Q4Kt72zT29TiRs
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
