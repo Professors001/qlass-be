@@ -157,24 +157,11 @@ func (u *submissionUseCase) GetSubmissionByID(id uint) (*dtos.GetSubmissionRespo
 }
 
 func (u *submissionUseCase) GetSubmissonByMaterialIDAndStudentID(classMaterialID uint, studentID uint) (*dtos.GetSubmissionResponseDto, error) {
-	val, err := u.submissionRepo.GetByClassMaterialIDAndStudentID(classMaterialID, studentID)
+	// Use FirstOrCreate to atomically get or create submission (prevents race condition duplicates)
+	baseSubmission := transforms.CreateBaseSubmissionEntity(studentID, classMaterialID)
+	val, err := u.submissionRepo.FirstOrCreate(baseSubmission, classMaterialID, studentID)
 	if err != nil {
 		return nil, err
-	}
-
-	if val == nil {
-		// Create a new "Draft/Assigned" submission
-		submission := transforms.CreateBaseSubmissionEntity(studentID, classMaterialID)
-
-		err = u.submissionRepo.Create(submission)
-		if err != nil {
-			val, retryErr := u.submissionRepo.GetByClassMaterialIDAndStudentID(classMaterialID, studentID)
-			if retryErr != nil || val == nil {
-				return nil, err
-			}
-		} else {
-			val = submission
-		}
 	}
 
 	imgUrl := u.userUsecase.GetProfileImgUrlByUserID(val.UserID)

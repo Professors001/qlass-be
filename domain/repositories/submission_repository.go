@@ -9,4 +9,5 @@ type SubmissionRepository interface {
 	GetByClassMaterialIDAndStudentID(classMaterialID uint, studentID uint) (*entities.Submission, error)
 	GetByClassMaterialID(classMaterialID uint) ([]*entities.Submission, error)
 	GetByStudentID(studentID uint) ([]*entities.Submission, error)
+	FirstOrCreate(submission *entities.Submission, classMaterialID uint, studentID uint) (*entities.Submission, error)
 }

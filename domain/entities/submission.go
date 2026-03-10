@@ -8,9 +8,9 @@ import (
 
 type Submission struct {
 	gorm.Model
-	ClassMaterialID uint          `json:"class_material_id" gorm:"not null"`
+	ClassMaterialID uint          `json:"class_material_id" gorm:"not null;uniqueIndex:idx_submission_material_user"`
 	ClassMaterial   ClassMaterial `json:"class_material" gorm:"foreignKey:ClassMaterialID"`
-	UserID          uint          `json:"user_id"`
+	UserID          uint          `json:"user_id" gorm:"uniqueIndex:idx_submission_material_user"`
 	User            User          `json:"user" gorm:"foreignKey:UserID"`
 	StudentComment  string        `json:"student_comment" gorm:"type:text"`
 	Score           *int          `json:"score" gorm:"comment:e.g. 85/100"`

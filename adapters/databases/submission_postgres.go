@@ -77,3 +77,15 @@ func (r *postgresSubmissionRepository) GetByStudentID(studentID uint) ([]*entiti
 	}
 	return submissions, nil
 }
+
+func (r *postgresSubmissionRepository) FirstOrCreate(submission *entities.Submission, classMaterialID uint, studentID uint) (*entities.Submission, error) {
+	var result entities.Submission
+	err := r.db.Preload("User.ProfileImgAttachment").
+		Where("class_material_id = ? AND user_id = ?", classMaterialID, studentID).
+		Attrs(submission).
+		FirstOrCreate(&result).Error
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
