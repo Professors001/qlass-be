@@ -196,3 +196,30 @@ func (h *MaterialHandler) UpdateQuizMaterial(c *gin.Context) {
 		return
 	}
 }
+
+func (h *MaterialHandler) DeleteMaterial(c *gin.Context) {
+	val, exists := c.Get("currentUser")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, dtos.GlobalErrorResponse{Error: "UNAUTHORIZED", Message: "User context not found"})
+		return
+	}
+
+	claims, ok := val.(*middleware.JWTCustomClaims)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, dtos.GlobalErrorResponse{Error: "UNAUTHORIZED", Message: "Invalid user context"})
+		return
+	}
+
+	materialID := utils.StringToUint(c.Param("id"))
+	if materialID == 0 {
+		c.JSON(http.StatusBadRequest, dtos.GlobalErrorResponse{Error: "BAD_REQUEST", Message: "Invalid material ID"})
+		return
+	}
+
+	if err := h.materialUseCase.DeleteClassMaterial(materialID, claims.UserId); err != nil {
+		c.JSON(http.StatusInternalServerError, dtos.GlobalErrorResponse{Error: "INTERNAL_SERVER_ERROR", Message: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Material deleted successfully"})
+}

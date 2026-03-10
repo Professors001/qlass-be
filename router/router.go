@@ -119,6 +119,7 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	materialRouter.PUT("/post", handler.ClassMaterialHandler.UpdatePostMaterial)
 	materialRouter.PUT("/assignment", handler.ClassMaterialHandler.UpdateAssignmentMaterial)
 	materialRouter.PUT("/quiz", handler.ClassMaterialHandler.UpdateQuizMaterial)
+	materialRouter.DELETE("/:id", handler.ClassMaterialHandler.DeleteMaterial)
 
 	// Submissions
 	submissionRouter := r.Group("/submissions")

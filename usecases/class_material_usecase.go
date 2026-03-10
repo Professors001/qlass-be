@@ -22,6 +22,7 @@ type ClassMaterialUseCase interface {
 	UpdatePostClassMaterial(dto *dtos.UpdatePostClassMaterialDto, ownerID uint) error
 	UpdateAssignmentClassMaterial(dto *dtos.UpdateAssignmentClassMaterialDto, ownerID uint) error
 	UpdateQuizClassMaterial(dto *dtos.UpdateQuizClassMaterialDto, ownerID uint) error
+	DeleteClassMaterial(classMaterialID uint, ownerID uint) error
 }
 
 type classMaterialUseCase struct {
@@ -369,6 +370,28 @@ func (u *classMaterialUseCase) UpdateQuizClassMaterial(dto *dtos.UpdateQuizClass
 	u.handlePublishedState(material, dto.Published)
 
 	return u.classMaterialRepo.Update(material)
+}
+
+func (u *classMaterialUseCase) DeleteClassMaterial(classMaterialID uint, ownerID uint) error {
+	material, err := u.classMaterialRepo.GetByID(classMaterialID)
+	if err != nil {
+		return err
+	}
+
+	class, err := u.classRepo.GetByID(material.ClassID)
+	if err != nil {
+		return err
+	}
+
+	if class.OwnerID != ownerID {
+		return errors.New("only class owner can delete class material")
+	}
+
+	if err := u.handleAttachments(classMaterialID, []uint{}); err != nil {
+		return err
+	}
+
+	return u.classMaterialRepo.Delete(classMaterialID)
 }
 
 // Helper to toggle PublishedAt based on the boolean flag
