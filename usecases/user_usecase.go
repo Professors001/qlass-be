@@ -191,7 +191,7 @@ func (u *userUseCase) CreateTeacher(ctx context.Context, req *dtos.CreateTeacher
 		FirstName:    req.FirstName,
 		LastName:     req.LastName,
 		Role:         "teacher",
-		IsVerified:   false,
+		IsVerified:   true,
 		IsActive:     true,
 	}
 
@@ -219,14 +219,23 @@ func (u *userUseCase) UpdateUser(req *dtos.UpdateUserRequestDto, userID uint) (*
 		user.LastName = req.LastName
 	}
 
-	if req.ProfileImgAttachmentID != *user.ProfileImgAttachmentID {
-		attachmentToDelete := *user.ProfileImgAttachmentID
+	if req.ProfileImgAttachmentID > 0 {
+		currentAttachmentID := uint(0)
+		hasCurrentAttachment := user.ProfileImgAttachmentID != nil
+		if hasCurrentAttachment {
+			currentAttachmentID = *user.ProfileImgAttachmentID
+		}
 
-		user.ProfileImgAttachmentID = &req.ProfileImgAttachmentID
+		if !hasCurrentAttachment || req.ProfileImgAttachmentID != currentAttachmentID {
+			newAttachmentID := req.ProfileImgAttachmentID
+			user.ProfileImgAttachmentID = &newAttachmentID
 
-		if err := u.attachmentUseCase.DeleteAttachment(attachmentToDelete); err != nil {
-			log.Println("Error deleting attachment:", err)
-			return nil, err
+			if hasCurrentAttachment {
+				if err := u.attachmentUseCase.DeleteAttachment(currentAttachmentID); err != nil {
+					log.Println("Error deleting attachment:", err)
+					return nil, err
+				}
+			}
 		}
 	}
 
