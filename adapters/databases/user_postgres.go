@@ -68,6 +68,17 @@ func (r *postgresUserRepository) GetByUniID(universityID string) (*entities.User
 	return &user, nil
 }
 
+// GetAll fetches all users from the database
+func (r *postgresUserRepository) GetAll() ([]*entities.User, error) {
+	var users []*entities.User
+
+	if err := r.db.Preload("ProfileImgAttachment").Find(&users).Error; err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
+
 func (r *postgresUserRepository) Update(user *entities.User) error {
 	// GORM handles the SQL Update automatically
 	if err := r.db.Save(user).Error; err != nil {

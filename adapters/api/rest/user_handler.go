@@ -236,3 +236,47 @@ func (h *UserHandler) AdminUpdateuser(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "User updated successfully"})
 }
+
+func (h *UserHandler) GetMyInfo(c *gin.Context) {
+	val, exists := c.Get("currentUser")
+	if !exists {
+		utils.SendError(c, http.StatusUnauthorized, "UNAUTHORIZED", "No user found in context")
+		return
+	}
+
+	claims, ok := val.(*middleware.JWTCustomClaims)
+	if !ok {
+		utils.SendError(c, http.StatusUnauthorized, "UNAUTHORIZED", "Invalid user context")
+		return
+	}
+
+	userData, err := h.UseCase.GetUserData(claims.UserId)
+	if err != nil {
+		utils.SendError(c, http.StatusInternalServerError, "FETCH_FAILED", err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, userData)
+}
+
+func (h *UserHandler) GetAllUsers(c *gin.Context) {
+	val, exists := c.Get("currentUser")
+	if !exists {
+		utils.SendError(c, http.StatusUnauthorized, "UNAUTHORIZED", "No user found in context")
+		return
+	}
+
+	claims, ok := val.(*middleware.JWTCustomClaims)
+	if !ok || claims.Role != "admin" {
+		utils.SendError(c, http.StatusForbidden, "FORBIDDEN", "Only admin can perform this action")
+		return
+	}
+
+	users, err := h.UseCase.GetAllUsers()
+	if err != nil {
+		utils.SendError(c, http.StatusInternalServerError, "FETCH_FAILED", err.Error())
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"users": users})
+}

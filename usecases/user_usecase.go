@@ -27,6 +27,8 @@ type UserUseCase interface {
 	ForgetPasswordStep2(ctx context.Context, req *dtos.ForgetPasswordStep2RequestDto) (*dtos.ForgetPasswordStep2ResponseDto, error)
 	AdminUpdateUser(req *dtos.AdminUpdateUserRequestDto) error
 	GetProfileImgUrlByUserID(userID uint) string
+	GetUserData(userID uint) (*dtos.UserDisplayData, error)
+	GetAllUsers() ([]*dtos.UserDisplayData, error)
 }
 
 type userUseCase struct {
@@ -397,4 +399,29 @@ func (u *userUseCase) GetProfileImgUrlByUserID(userID uint) string {
 	}
 
 	return profileImgURL
+}
+
+func (u *userUseCase) GetUserData(userID uint) (*dtos.UserDisplayData, error) {
+	user, err := u.userRepo.GetByID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	imgUrl := u.GetProfileImgUrlByUserID(userID)
+	return transforms.UserEntityToUserDisplayResponse(user, imgUrl), nil
+}
+
+func (u *userUseCase) GetAllUsers() ([]*dtos.UserDisplayData, error) {
+	users, err := u.userRepo.GetAll()
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*dtos.UserDisplayData
+	for _, user := range users {
+		imgUrl := u.GetProfileImgUrlByUserID(user.ID)
+		result = append(result, transforms.UserEntityToUserDisplayResponse(user, imgUrl))
+	}
+
+	return result, nil
 }

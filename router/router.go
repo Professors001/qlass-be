@@ -84,6 +84,8 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	userRouter.POST("/register-step-two", handler.UserHandler.RegisterSecondStep)
 	userRouter.POST("/login", handler.UserHandler.Login)
 	userRouter.GET("/me", middleware.AuthorizeJWT(jwtService), handler.UserHandler.Me)
+	userRouter.GET("/my-info", middleware.AuthorizeJWT(jwtService), handler.UserHandler.GetMyInfo)
+	userRouter.GET("/all-users", middleware.AuthorizeJWT(jwtService), handler.UserHandler.GetAllUsers)
 	userRouter.POST("/create-teacher", middleware.AuthorizeJWT(jwtService), handler.UserHandler.CreateTeacher)
 	userRouter.PUT("/update", middleware.AuthorizeJWT(jwtService), handler.UserHandler.UpdateUser)
 	userRouter.PUT("/change-password", middleware.AuthorizeJWT(jwtService), handler.UserHandler.ChangePassword)
