@@ -64,7 +64,7 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	quizHandler := rest.NewQuizHandler(quizUseCase)
 
 	gameRepo := cache.NewGameRedisRepository(cacheService)
-	gameUseCase := usecases.NewGameUseCase(gameRepo, quizGameLogRepo, classMaterialRepo, classRepo, userRepo, submissionRepo, quizStudentResponseRepo)
+	gameUseCase := usecases.NewGameUseCase(gameRepo, quizGameLogRepo, classMaterialRepo, classRepo, userRepo, userUseCase, submissionRepo, quizStudentResponseRepo)
 	gameHandler := rest.NewGameHandler(gameUseCase)
 
 	handler := api.ProvideHandler(

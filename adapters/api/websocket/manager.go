@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"qlass-be/dtos"
 	"qlass-be/middleware"
 	"qlass-be/usecases"
 	"sync"
@@ -127,41 +126,47 @@ func NextHandler(event Event, c *Client) error {
 		return err
 	}
 
-	payloadBytes, err := json.Marshal(wsEvent.Payload)
-	if err != nil {
-		return err
+	if wsEvent.Type == "SYNC_TRIGGER" {
+		c.manager.BroadcastGameState(c.GamePIN)
+	} else {
+		payloadBytes, err := json.Marshal(wsEvent.Payload)
+		if err != nil {
+			return err
+		}
+
+		c.manager.Broadcast(c.GamePIN, Event{
+			Type:    wsEvent.Type,
+			Payload: payloadBytes,
+		})
 	}
 
-	c.manager.Broadcast(c.GamePIN, Event{
-		Type:    wsEvent.Type,
-		Payload: payloadBytes,
-	})
+	// Auto-timeout logic now derives from the synced game state.
+	syncState, err := c.manager.gameUseCase.GetSyncState(context.Background(), c.GamePIN, c.UserID)
+	if err == nil && syncState != nil && syncState.Status == "running" && syncState.QuestionState == "answering" && syncState.QuestionStateObject != nil {
+		go func(pin string, duration int, questionIndex int) {
+			time.Sleep(time.Duration(duration) * time.Second)
 
-	// Auto-Next Logic: If we just started a question, start a timer
-	if wsEvent.Type == "NEXT_QUESTION" {
-		if payload, ok := wsEvent.Payload.(dtos.QuestionPayload); ok {
-			go func(pin string, duration int, questionIndex int) {
-				time.Sleep(time.Duration(duration) * time.Second)
+			timeoutEvent, err := c.manager.gameUseCase.TimeoutQuestion(context.Background(), pin, questionIndex)
+			if err != nil {
+				log.Println("Timeout error:", err)
+				return
+			}
 
-				// Trigger timeout
-				timeoutEvent, err := c.manager.gameUseCase.TimeoutQuestion(context.Background(), pin, questionIndex)
-				if err != nil {
-					log.Println("Timeout error:", err)
-					return
-				}
-
-				if timeoutEvent != nil {
+			if timeoutEvent != nil {
+				if timeoutEvent.Type == "SYNC_TRIGGER" {
+					c.manager.BroadcastGameState(pin)
+				} else {
 					payloadBytes, _ := json.Marshal(timeoutEvent.Payload)
 					c.manager.Broadcast(pin, Event{
 						Type:    timeoutEvent.Type,
 						Payload: payloadBytes,
 					})
 				}
-			}(c.GamePIN, payload.TimeLimitSeconds, payload.QuestionIndex)
-		}
+			}
+		}(c.GamePIN, syncState.QuestionStateObject.TimeLimitSeconds, syncState.QuestionStateObject.CurrentQuestion)
 	}
 
-	if wsEvent.Type == "GAME_OVER" {
+	if syncState != nil && syncState.Status == "finished" {
 		go func(pin string) {
 			time.Sleep(2 * time.Second) // Give time for the GAME_OVER message to reach clients
 			c.manager.CloseRoom(pin)
@@ -181,7 +186,7 @@ func StudentAnswerHandler(event Event, c *Client) error {
 		return fmt.Errorf("invalid payload for student_answer: %v", err)
 	}
 
-	resp, stats, err := c.manager.gameUseCase.SubmitAnswer(context.Background(), c.GamePIN, c.UserID, payload.OptionID)
+	resp, wsEvent, err := c.manager.gameUseCase.SubmitAnswer(context.Background(), c.GamePIN, c.UserID, payload.OptionID)
 	if err != nil {
 		return err
 	}
@@ -192,13 +197,16 @@ func StudentAnswerHandler(event Event, c *Client) error {
 		Payload: respBytes,
 	}
 
-	// Broadcast Live Stats to everyone (Teacher updates chart, Students see progress)
-	if stats != nil {
-		statsBytes, _ := json.Marshal(stats)
-		c.manager.Broadcast(c.GamePIN, Event{
-			Type:    "LIVE_STATS",
-			Payload: statsBytes,
-		})
+	if wsEvent != nil {
+		if wsEvent.Type == "SYNC_TRIGGER" {
+			c.manager.BroadcastGameState(c.GamePIN)
+		} else {
+			payloadBytes, _ := json.Marshal(wsEvent.Payload)
+			c.manager.Broadcast(c.GamePIN, Event{
+				Type:    wsEvent.Type,
+				Payload: payloadBytes,
+			})
+		}
 	}
 
 	return nil
@@ -210,7 +218,7 @@ func (m *Manager) setEventHandler(eventType string, handler EventHandler) {
 
 func (m *Manager) ServeWS(w http.ResponseWriter, r *http.Request, claims *middleware.JWTCustomClaims, pin string) {
 	// 1. Join Game Logic (Validate & Update Redis)
-	gameInfo, lobbyUpdate, err := m.gameUseCase.JoinGame(r.Context(), pin, claims.UserId)
+	gameInfo, joinEvent, err := m.gameUseCase.JoinGame(r.Context(), pin, claims.UserId)
 	if err != nil {
 		log.Println("JoinGame error:", err)
 		w.Header().Set("Content-Type", "application/json")
@@ -239,63 +247,16 @@ func (m *Manager) ServeWS(w http.ResponseWriter, r *http.Request, claims *middle
 		Payload: gameInfoBytes,
 	}
 
-	// 3. Broadcast Lobby Update to everyone
-	if gameInfo.Status == "waiting" && lobbyUpdate != nil {
-		payloadBytes, _ := json.Marshal(lobbyUpdate)
+	// 3. Broadcast the join event (if any) to room members.
+	if joinEvent != nil {
+		payloadBytes, _ := json.Marshal(joinEvent.Payload)
 		event := Event{
-			Type:    "LOBBY_UPDATE",
+			Type:    joinEvent.Type,
 			Payload: payloadBytes,
 		}
 
 		// Broadcast to room
 		m.Broadcast(pin, event)
-	}
-
-	// 4. Handle Reconnection during "answering" state
-	// If the game is running and in answering state, send the current question and stats
-	if gameInfo.Status == "running" && gameInfo.QuestionState == "answering" {
-		// A. Send Question Payload
-		qPayload, err := m.gameUseCase.GetCurrentQuestion(r.Context(), pin)
-		if err == nil && qPayload != nil {
-			payloadBytes, _ := json.Marshal(qPayload)
-			client.egress <- Event{
-				Type:    "NEXT_QUESTION",
-				Payload: payloadBytes,
-			}
-		}
-
-		// B. Send Live Stats (Teacher needs this, Student might see progress)
-		statsPayload, err := m.gameUseCase.GetLiveStats(r.Context(), pin)
-		if err == nil && statsPayload != nil {
-			payloadBytes, _ := json.Marshal(statsPayload)
-			client.egress <- Event{
-				Type:    "LIVE_STATS",
-				Payload: payloadBytes,
-			}
-		}
-
-		// C. Check if Student has already answered
-		if claims.Role == "player" || claims.Role == "student" {
-			answered, _ := m.gameUseCase.HasUserAnswered(r.Context(), pin, claims.UserId)
-			if answered {
-				client.egress <- Event{
-					Type:    "ANSWER_SUBMITTED",
-					Payload: []byte(`{"message":"You have already answered this question"}`),
-				}
-			}
-		}
-	}
-
-	// 5. Handle Reconnection during "revealed" state
-	if gameInfo.Status == "running" && gameInfo.QuestionState == "revealed" {
-		resultPayload, err := m.gameUseCase.GetRoundResult(r.Context(), pin)
-		if err == nil && resultPayload != nil {
-			payloadBytes, _ := json.Marshal(resultPayload)
-			client.egress <- Event{
-				Type:    "ROUND_RESULT",
-				Payload: payloadBytes,
-			}
-		}
 	}
 }
 
@@ -326,10 +287,10 @@ func (m *Manager) removeClient(client *Client) {
 
 	if _, ok := m.clients[client]; !ok {
 		m.Unlock()
+		client.shutdown()
 		return
 	}
 
-	client.connection.Close()
 	delete(m.clients, client)
 
 	// Remove from Room
@@ -345,6 +306,8 @@ func (m *Manager) removeClient(client *Client) {
 	}
 	m.Unlock()
 
+	client.shutdown()
+
 	if client.GamePIN != "" && client.UserID != 0 {
 		go func() {
 			ctx := context.Background()
@@ -358,9 +321,9 @@ func (m *Manager) removeClient(client *Client) {
 				return
 			}
 
-			payloadBytes, _ := json.Marshal(lobbyUpdate)
+			payloadBytes, _ := json.Marshal(lobbyUpdate.Payload)
 			event := Event{
-				Type:    "LOBBY_UPDATE",
+				Type:    lobbyUpdate.Type,
 				Payload: payloadBytes,
 			}
 			m.Broadcast(client.GamePIN, event)
@@ -396,13 +359,14 @@ func (m *Manager) CloseRoom(pin string) {
 	if clients, ok := m.rooms[pin]; ok {
 		for client := range clients {
 			clientsToClose = append(clientsToClose, client)
+			delete(m.clients, client)
 		}
 		delete(m.rooms, pin)
 	}
 	m.Unlock()
 
 	for _, client := range clientsToClose {
-		client.connection.Close()
+		client.shutdown()
 	}
 }
 
@@ -417,6 +381,41 @@ func (m *Manager) Broadcast(pin string, event Event) {
 			default:
 				log.Println("egress channel full, dropping message")
 			}
+		}
+	}
+}
+
+func (m *Manager) BroadcastGameState(pin string) {
+	m.RLock()
+	room, ok := m.rooms[pin]
+	if !ok {
+		m.RUnlock()
+		return
+	}
+
+	clients := make([]*Client, 0, len(room))
+	for client := range room {
+		clients = append(clients, client)
+	}
+	m.RUnlock()
+
+	for _, client := range clients {
+		syncState, err := m.gameUseCase.GetSyncState(context.Background(), pin, client.UserID)
+		if err != nil {
+			log.Println("GetSyncState error:", err)
+			continue
+		}
+
+		payloadBytes, err := json.Marshal(syncState)
+		if err != nil {
+			log.Println("failed to marshal game state:", err)
+			continue
+		}
+
+		select {
+		case client.egress <- Event{Type: EventGameState, Payload: payloadBytes}:
+		default:
+			log.Println("egress channel full, dropping game state")
 		}
 	}
 }

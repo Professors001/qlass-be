@@ -33,7 +33,7 @@ type GameStateRedis struct {
 // Maps to HASH: game:{pin}:player:{user_id}
 type PlayerDataRedis struct {
 	Name      string `redis:"name"`
-	AvatarURL string `json:"avatar_url"`
+	AvatarURL string `redis:"avatar_url"`
 	Score     int    `redis:"score"`
 	Correct   int    `redis:"correct"`
 	Streak    int    `redis:"streak"`

@@ -3,6 +3,7 @@ package websocket
 import (
 	"encoding/json"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -27,6 +28,9 @@ type Client struct {
 	UserID  uint
 	Role    string
 	GamePIN string
+
+	closeOnce sync.Once
+	done      chan struct{}
 }
 
 func NewClient(conn *websocket.Conn, manager *Manager, userID uint, role string, pin string) *Client {
@@ -37,7 +41,14 @@ func NewClient(conn *websocket.Conn, manager *Manager, userID uint, role string,
 		UserID:     userID,
 		Role:       role,
 		GamePIN:    pin,
+		done:       make(chan struct{}),
 	}
+}
+
+func (c *Client) shutdown() {
+	c.closeOnce.Do(func() {
+		close(c.done)
+	})
 }
 
 func (c *Client) readMessage() {
@@ -83,14 +94,15 @@ func (c *Client) writeMessage() {
 	}()
 
 	ticker := time.NewTicker(pingPeriod)
+	defer ticker.Stop()
+	defer c.connection.Close()
 
 	for {
 		select {
+		case <-c.done:
+			return
 		case massage, ok := <-c.egress:
 			if !ok {
-				if err := c.connection.WriteMessage(websocket.CloseMessage, nil); err != nil {
-					log.Println("connection closed", err)
-				}
 				return
 			}
 
@@ -106,11 +118,7 @@ func (c *Client) writeMessage() {
 			log.Println("message sent")
 
 		case <-ticker.C:
-			// log.Println("ping")
-
-			//Send a pint to client
 			if err := c.connection.WriteMessage(websocket.PingMessage, []byte(``)); err != nil {
-				log.Println("write_msg_err : ", err)
 				return
 			}
 
