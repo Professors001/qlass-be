@@ -12,12 +12,14 @@ type Config struct {
 	AppEnv  string `mapstructure:"APP_ENV"`
 
 	// Database Settings
-	DBHost     string `mapstructure:"DB_HOST"`
-	DBPort     string `mapstructure:"DB_PORT"`
-	DBUser     string `mapstructure:"DB_USER"`
-	DBPassword string `mapstructure:"DB_PASSWORD"`
-	DBName     string `mapstructure:"DB_NAME"`
-	DBSSLMode  string `mapstructure:"DB_SSLMODE"`
+	DatabaseURL string `mapstructure:"DATABASE_URL"`
+	SupabaseURL string `mapstructure:"SUPABASE_URL"`
+	DBHost      string `mapstructure:"DB_HOST"`
+	DBPort      string `mapstructure:"DB_PORT"`
+	DBUser      string `mapstructure:"DB_USER"`
+	DBPassword  string `mapstructure:"DB_PASSWORD"`
+	DBName      string `mapstructure:"DB_NAME"`
+	DBSSLMode   string `mapstructure:"DB_SSLMODE"`
 
 	// Redis Settings
 	RedisHost     string `mapstructure:"REDIS_HOST"`
@@ -66,8 +68,9 @@ func LoadConfig() *Config {
 	}
 
 	// Basic validation
-	if config.DBHost == "" || config.DBPort == "" {
-		log.Fatal("❌ Database configuration is missing. Check your .env file.")
+	hasDBURL := config.DatabaseURL != "" || config.SupabaseURL != ""
+	if !hasDBURL && (config.DBHost == "" || config.DBPort == "") {
+		log.Fatal("❌ Database configuration is missing. Set DATABASE_URL/SUPABASE_URL or DB_HOST and DB_PORT.")
 	}
 
 	if config.MinioEndpoint == "" {
