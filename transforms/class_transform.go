@@ -43,6 +43,20 @@ func EntityToStudentDetailsDto(enrollment entities.ClassEnrollment) dtos.Student
 	}
 }
 
+func UserDtoToStudentDetailsDto(userDto *dtos.UserDisplayData, enrollment entities.ClassEnrollment) dtos.StudentDetailsDto {
+	return dtos.StudentDetailsDto{
+		UniversityID: userDto.UniversityID,
+		FirstName:    userDto.FirstName,
+		LastName:     userDto.LastName,
+		ProfileImg:   userDto.ProfileImgUrl,
+		Email:        userDto.Email,
+		EnrolledRole: enrollment.Role,
+		EnrolledAt:   enrollment.CreatedAt.String(),
+		Status:       enrollment.Status,
+	}
+
+}
+
 func UpdateClassReqToClassEntity(req *dtos.UpdateClassRequestDto, class *entities.Class) entities.Class {
 	if req.Name != "" && req.Name != class.Name {
 		class.Name = req.Name

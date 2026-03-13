@@ -41,7 +41,7 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 
 	classRepo := databases.NewPostgresClassRepository(db)
 	enrollRepo := databases.NewPostgresEnrollRepository(db)
-	classUseCase := usecases.NewClassUseCase(classRepo, enrollRepo, userRepo, attachmentUseCase)
+	classUseCase := usecases.NewClassUseCase(classRepo, enrollRepo, userRepo, userUseCase, attachmentUseCase)
 	classHandler := rest.NewClassHandler(classUseCase)
 
 	quizRepo := databases.NewPostgresQuizRepository(db)
@@ -64,7 +64,7 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	quizHandler := rest.NewQuizHandler(quizUseCase)
 
 	gameRepo := cache.NewGameRedisRepository(cacheService)
-	gameUseCase := usecases.NewGameUseCase(gameRepo, quizGameLogRepo, classMaterialRepo, classRepo, userRepo, userUseCase, submissionRepo, quizStudentResponseRepo)
+	gameUseCase := usecases.NewGameUseCase(gameRepo, quizGameLogRepo, classMaterialRepo, classRepo, enrollRepo, userRepo, userUseCase, submissionRepo, quizStudentResponseRepo)
 	gameHandler := rest.NewGameHandler(gameUseCase)
 
 	handler := api.ProvideHandler(

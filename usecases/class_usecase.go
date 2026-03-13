@@ -29,14 +29,20 @@ type classUseCase struct {
 	classRepo         repositories.ClassRepository
 	enrollRepo        repositories.EnrollRepository
 	userRepo          repositories.UserRepository
+	userUseCase       UserUseCase
 	attachmentUseCase AttachmentUseCase
 }
 
-func NewClassUseCase(classRepo repositories.ClassRepository, enrollRepo repositories.EnrollRepository, userRepo repositories.UserRepository, attachmentUC AttachmentUseCase) ClassUseCase {
+func NewClassUseCase(classRepo repositories.ClassRepository,
+	enrollRepo repositories.EnrollRepository,
+	userRepo repositories.UserRepository,
+	userUseCase UserUseCase,
+	attachmentUC AttachmentUseCase) ClassUseCase {
 	return &classUseCase{
 		classRepo:         classRepo,
 		enrollRepo:        enrollRepo,
 		userRepo:          userRepo,
+		userUseCase:       userUseCase,
 		attachmentUseCase: attachmentUC,
 	}
 }
@@ -202,9 +208,16 @@ func (c *classUseCase) GetEnrolledStudentsByClassID(ctx context.Context, classID
 	var students []dtos.StudentDetailsDto
 
 	for _, enrollment := range enrollments {
-		dto := transforms.EntityToStudentDetailsDto(enrollment)
+		userDto, err := c.userUseCase.GetUserData(enrollment.UserID)
+		if err != nil {
+			return nil, err
+		}
+
+		dto := transforms.UserDtoToStudentDetailsDto(userDto, enrollment)
+
 		if enrollment.Role == "teacher" || enrollment.Role == "ta" {
 			teachers = append(teachers, dto)
+
 		} else {
 			students = append(students, dto)
 		}

@@ -32,11 +32,12 @@ type GameStateRedis struct {
 
 // Maps to HASH: game:{pin}:player:{user_id}
 type PlayerDataRedis struct {
-	Name      string `redis:"name"`
-	AvatarURL string `redis:"avatar_url"`
-	Score     int    `redis:"score"`
-	Correct   int    `redis:"correct"`
-	Streak    int    `redis:"streak"`
+	Name         string `redis:"name"`
+	UniversityID string `redis:"university_id"`
+	AvatarURL    string `redis:"avatar_url"`
+	Score        int    `redis:"score"`
+	Correct      int    `redis:"correct"`
+	Streak       int    `redis:"streak"`
 }
 
 // PlayerScore represents a single row in the leaderboard

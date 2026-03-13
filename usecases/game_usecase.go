@@ -33,6 +33,7 @@ type gameUseCase struct {
 	quizGameLogRepo         repositories.QuizGameLogRepository
 	classMaterialRepo       repositories.ClassMaterialRepository
 	classRepo               repositories.ClassRepository
+	enrollRepo              repositories.EnrollRepository
 	userRepo                repositories.UserRepository
 	userUseCase             UserUseCase
 	submissionRepo          repositories.SubmissionRepository
@@ -44,6 +45,7 @@ func NewGameUseCase(
 	quizGameLogRepo repositories.QuizGameLogRepository,
 	classMaterialRepo repositories.ClassMaterialRepository,
 	classRepo repositories.ClassRepository,
+	enrollRepo repositories.EnrollRepository,
 	userRepo repositories.UserRepository,
 	userUseCase UserUseCase,
 	submissionRepo repositories.SubmissionRepository,
@@ -54,6 +56,7 @@ func NewGameUseCase(
 		quizGameLogRepo:         quizGameLogRepo,
 		classMaterialRepo:       classMaterialRepo,
 		classRepo:               classRepo,
+		enrollRepo:              enrollRepo,
 		userRepo:                userRepo,
 		userUseCase:             userUseCase,
 		submissionRepo:          submissionRepo,
@@ -157,11 +160,12 @@ func (u *gameUseCase) GetSyncState(ctx context.Context, pin string, userID uint)
 		pData, _ := u.gameRepo.GetPlayerData(ctx, pin, userID)
 		if pData != nil {
 			myState := &dtos.MyPlayerStateDto{
-				UserID:    userID,
-				Name:      pData.Name,
-				AvatarURL: pData.AvatarURL,
-				Score:     pData.Score,
-				Streak:    pData.Streak,
+				UserID:       userID,
+				Name:         pData.Name,
+				UniversityID: pData.UniversityID,
+				AvatarURL:    pData.AvatarURL,
+				Score:        pData.Score,
+				Streak:       pData.Streak,
 			}
 
 			if state.CurrentQuestion > 0 {
@@ -277,6 +281,21 @@ func (u *gameUseCase) JoinGame(ctx context.Context, pin string, userID uint) (*d
 		return nil, nil, errors.New("game session not found")
 	}
 
+	// Skip enrollment check for the host
+	if state.HostID != userID {
+		material, err := u.classMaterialRepo.GetByID(state.ClassMaterialID)
+		if err != nil {
+			return nil, nil, errors.New("class material not found")
+		}
+		enrolled, err := u.enrollRepo.IsEnrolled(material.ClassID, userID)
+		if err != nil {
+			return nil, nil, err
+		}
+		if !enrolled {
+			return nil, nil, errors.New("you are not enrolled in this class")
+		}
+	}
+
 	inLobby, err := u.gameRepo.IsPlayerInLobby(ctx, pin, userID)
 	if err != nil {
 		return nil, nil, err
@@ -296,11 +315,12 @@ func (u *gameUseCase) JoinGame(ctx context.Context, pin string, userID uint) (*d
 
 	existingData, _ := u.gameRepo.GetPlayerData(ctx, pin, userID)
 	playerData := &entities.PlayerDataRedis{
-		Name:      user.FirstName + " " + user.LastName,
-		AvatarURL: user_img_url,
-		Score:     0,
-		Correct:   0,
-		Streak:    0,
+		Name:         user.FirstName + " " + user.LastName,
+		UniversityID: user.UniversityID,
+		AvatarURL:    user_img_url,
+		Score:        0,
+		Correct:      0,
+		Streak:       0,
 	}
 
 	if existingData != nil && existingData.Name != "" {
@@ -331,9 +351,10 @@ func (u *gameUseCase) JoinGame(ctx context.Context, pin string, userID uint) (*d
 			Type: "PLAYER_JOINED",
 			Payload: map[string]interface{}{
 				"new_player": dtos.PlayerDto{
-					UserID:    user.ID,
-					Name:      playerData.Name,
-					AvatarURL: playerData.AvatarURL,
+					UserID:       user.ID,
+					Name:         playerData.Name,
+					UniversityID: playerData.UniversityID,
+					AvatarURL:    playerData.AvatarURL,
 				},
 				"total_players": syncState.LobbyStateObject.TotalPlayers,
 			},
@@ -703,20 +724,23 @@ func (u *gameUseCase) getLeaderboardDtos(ctx context.Context, pin string, limit 
 	for _, p := range leaderboard {
 		pData, _ := u.gameRepo.GetPlayerData(ctx, pin, p.UserID)
 		name := "Unknown"
+		universityID := ""
 		avatar := ""
 		streak := 0
 		if pData != nil {
 			name = pData.Name
+			universityID = pData.UniversityID
 			avatar = pData.AvatarURL
 			streak = pData.Streak
 		}
 		result = append(result, dtos.PlayerDto{
-			UserID:    p.UserID,
-			Name:      name,
-			AvatarURL: avatar,
-			Score:     p.Score,
-			Rank:      p.Rank,
-			Streak:    streak,
+			UserID:       p.UserID,
+			Name:         name,
+			UniversityID: universityID,
+			AvatarURL:    avatar,
+			Score:        p.Score,
+			Rank:         p.Rank,
+			Streak:       streak,
 		})
 	}
 	return result

@@ -75,12 +75,13 @@ type ResultStateDto struct {
 }
 
 type MyPlayerStateDto struct {
-	UserID    uint   `json:"user_id"`
-	Name      string `json:"name"`
-	AvatarURL string `json:"avatar_url"`
-	Score     int    `json:"score"`
-	Rank      int    `json:"rank"`
-	Streak    int    `json:"streak"`
+	UserID       uint   `json:"user_id"`
+	Name         string `json:"name"`
+	UniversityID string `json:"university_id"`
+	AvatarURL    string `json:"avatar_url"`
+	Score        int    `json:"score"`
+	Rank         int    `json:"rank"`
+	Streak       int    `json:"streak"`
 
 	HasAnswered      bool `json:"has_answered"`
 	SelectedOptionID uint `json:"selected_option_id,omitempty"`
@@ -99,12 +100,13 @@ type AnswerCountUpdatePayload struct {
 }
 
 type PlayerDto struct {
-	UserID    uint   `json:"user_id"`
-	Name      string `json:"name"`
-	AvatarURL string `json:"avatar_url"`
-	Score     int    `json:"score"`
-	Rank      int    `json:"rank,omitempty"`
-	Streak    int    `json:"streak,omitempty"`
+	UserID       uint   `json:"user_id"`
+	Name         string `json:"name"`
+	UniversityID string `json:"university_id"`
+	AvatarURL    string `json:"avatar_url"`
+	Score        int    `json:"score"`
+	Rank         int    `json:"rank,omitempty"`
+	Streak       int    `json:"streak,omitempty"`
 }
 
 type WSQuizOptionDto struct {
