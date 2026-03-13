@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"qlass-be/adapters/cache"
@@ -32,17 +33,33 @@ func main() {
 	cacheService := cache.NewCacheService(redisClient)
 	cacheHelper := cache.NewCacheHelper(cacheService)
 
-	// Verify MinIO Bucket
-	exists, err := minioClient.BucketExists(context.Background(), cfg.MinioBucketName)
-	if err != nil {
-		log.Printf("⚠️  Error checking MinIO bucket: %v", err)
-	} else if !exists {
-		log.Printf("⚠️  MinIO bucket '%s' does not exist", cfg.MinioBucketName)
-	} else {
-		log.Printf("✅ MinIO bucket '%s' is ready", cfg.MinioBucketName)
-	}
+	var storageService storage.StorageService
 
-	storageService := storage.NewMinioStorageService(minioClient)
+	if strings.Contains(cfg.MinioEndpoint, "supabase.co") {
+		storageServiceSupabase, err := storage.NewSupabaseS3StorageService(
+			cfg.MinioEndpoint,
+			cfg.MinioRegion,
+			cfg.MinioAccessKey,
+			cfg.MinioSecretKey,
+			cfg.MinioUseSSL,
+		)
+		if err != nil {
+			log.Fatalf("❌ Failed to create Supabase S3 client: %v", err)
+		}
+		storageService = storageServiceSupabase
+		log.Println("✅ Using Supabase S3 storage backend")
+	} else {
+		exists, err := minioClient.BucketExists(context.Background(), cfg.MinioBucketName)
+		if err != nil {
+			log.Printf("⚠️  Error checking MinIO bucket: %v", err)
+		} else if !exists {
+			log.Printf("⚠️  MinIO bucket '%s' does not exist", cfg.MinioBucketName)
+		} else {
+			log.Printf("✅ MinIO bucket '%s' is ready", cfg.MinioBucketName)
+		}
+
+		storageService = storage.NewMinioStorageService(minioClient)
+	}
 
 	// Migration
 	if err := db.AutoMigrate(

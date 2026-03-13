@@ -33,6 +33,7 @@ type Config struct {
 
 	// MinIO Settings
 	MinioEndpoint   string `mapstructure:"MINIO_ENDPOINT"`
+	MinioRegion     string `mapstructure:"MINIO_REGION"`
 	MinioAccessKey  string `mapstructure:"MINIO_ROOT_USER"`
 	MinioSecretKey  string `mapstructure:"MINIO_ROOT_PASSWORD"`
 	MinioBucketName string `mapstructure:"MINIO_BUCKET_NAME"`

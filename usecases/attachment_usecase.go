@@ -27,6 +27,7 @@ type AttachmentUseCase interface {
 	GetAttachmentByID(id uint) (*dtos.GetAttachmentResponseDto, error)
 	GetAttachmentsByOwner(ownerType string, ownerID uint) ([]*dtos.GetAttachmentResponseDto, error)
 	UpdateAttachment(dto *dtos.UpdateAttachmentDto) error
+	LinkAttachmentToUser(attachmentID uint, userID uint) error
 	DeleteAttachment(id uint) error
 	GenerateFileURL(objectKey string) (string, error)
 }
@@ -125,6 +126,19 @@ func (u *attachmentUseCase) UpdateAttachment(dto *dtos.UpdateAttachmentDto) erro
 	default:
 		return fmt.Errorf("invalid attachment type: %s", dto.Type)
 	}
+
+	return u.attachmentRepo.Update(attachment)
+}
+
+func (u *attachmentUseCase) LinkAttachmentToUser(attachmentID uint, userID uint) error {
+	attachment, err := u.attachmentRepo.GetByID(attachmentID)
+	if err != nil {
+		return err
+	}
+
+	ownerType := "user"
+	attachment.OwnerID = &userID
+	attachment.OwnerType = &ownerType
 
 	return u.attachmentRepo.Update(attachment)
 }

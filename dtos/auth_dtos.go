@@ -74,6 +74,7 @@ type UpdateUserRequestDto struct {
 	FirstName              string `json:"first_name"`
 	LastName               string `json:"last_name"`
 	ProfileImgAttachmentID uint   `json:"profile_img_attachment_id"`
+	ProfileAttachmentID    uint   `json:"profile_attachment_id"`
 }
 
 type ChangePasswordRequestDto struct {

@@ -219,15 +219,31 @@ func (u *userUseCase) UpdateUser(req *dtos.UpdateUserRequestDto, userID uint) (*
 		user.LastName = req.LastName
 	}
 
-	if req.ProfileImgAttachmentID > 0 {
+	requestedAttachmentID := req.ProfileImgAttachmentID
+	if requestedAttachmentID == 0 {
+		requestedAttachmentID = req.ProfileAttachmentID
+	}
+
+	if requestedAttachmentID > 0 {
+		newAttachment, err := u.attachmentUseCase.GetAttachmentByID(requestedAttachmentID)
+		if err != nil {
+			return nil, errors.New("attachment not found")
+		}
+		if newAttachment.UploaderID != userID {
+			return nil, errors.New("unauthorized attachment")
+		}
+
 		currentAttachmentID := uint(0)
 		hasCurrentAttachment := user.ProfileImgAttachmentID != nil
 		if hasCurrentAttachment {
 			currentAttachmentID = *user.ProfileImgAttachmentID
 		}
 
-		if !hasCurrentAttachment || req.ProfileImgAttachmentID != currentAttachmentID {
-			newAttachmentID := req.ProfileImgAttachmentID
+		if !hasCurrentAttachment || requestedAttachmentID != currentAttachmentID {
+			newAttachmentID := requestedAttachmentID
+			if err := u.attachmentUseCase.LinkAttachmentToUser(newAttachmentID, userID); err != nil {
+				return nil, err
+			}
 			user.ProfileImgAttachmentID = &newAttachmentID
 
 			if hasCurrentAttachment {
