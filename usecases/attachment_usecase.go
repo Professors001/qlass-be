@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"mime/multipart"
+	"path/filepath"
 	"qlass-be/adapters/storage"
 	"qlass-be/config"
 	"qlass-be/domain/entities"
@@ -12,6 +13,7 @@ import (
 	"qlass-be/dtos"
 	"qlass-be/transforms"
 	"qlass-be/utils"
+	"strings"
 	"time"
 )
 
@@ -50,7 +52,7 @@ func NewAttachmentUseCase(storageService storage.StorageService, attachmentRepo 
 
 func (u *attachmentUseCase) UploadAttachment(userID uint, file *multipart.FileHeader) (*dtos.UploadAttachmentResponseDto, error) {
 	bucketName := u.cfg.MinioBucketName
-	objectName := fmt.Sprintf("%d_%s", time.Now().UnixNano(), file.Filename)
+	objectName := buildAttachmentObjectName(file.Filename)
 
 	err := u.storageService.Upload(context.Background(), file, bucketName, objectName)
 	if err != nil {
@@ -77,6 +79,31 @@ func (u *attachmentUseCase) UploadAttachment(userID uint, file *multipart.FileHe
 	}
 
 	return transforms.ToUploadAttachmentResponseDto(attachment, fileURL), nil
+}
+
+func buildAttachmentObjectName(filename string) string {
+	ext := sanitizeAttachmentExtension(filepath.Ext(filename))
+	return fmt.Sprintf("attachments/%d_%s%s", time.Now().UnixNano(), utils.GenerateRandomString(12), ext)
+}
+
+func sanitizeAttachmentExtension(ext string) string {
+	ext = strings.ToLower(strings.TrimSpace(ext))
+	if ext == "" {
+		return ""
+	}
+
+	for _, char := range ext {
+		if char == '.' {
+			continue
+		}
+		if char < 'a' || char > 'z' {
+			if char < '0' || char > '9' {
+				return ""
+			}
+		}
+	}
+
+	return ext
 }
 
 func (u *attachmentUseCase) GetAttachmentByID(id uint) (*dtos.GetAttachmentResponseDto, error) {
