@@ -1,0 +1,27 @@
+meta {
+  name: test WS 1
+  type: ws
+  seq: 1
+}
+
+ws {
+  url: ws://localhost:8080/ws?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoidGVhY2hlciIsImV4cCI6MTc3MzU5NzQ4NH0.3-LEpHxCSsQAdoc4xvQ3BZGfkViwhpWTHNkF6315s60&pin=923840
+  body: ws
+  auth: none
+}
+
+body:ws {
+  name: message 1
+  type: json
+  content: '''
+    {
+      "type": "next",
+      "payload": {}
+    }
+  '''
+}
+
+settings {
+  encodeUrl: false
+  timeout: 0
+}

@@ -1,0 +1,132 @@
+package websocket
+
+import (
+	"encoding/json"
+	"log"
+	"sync"
+	"time"
+
+	"github.com/gorilla/websocket"
+)
+
+var (
+	pongWait = 10 * time.Second
+
+	pingPeriod = (pongWait * 9) / 10
+)
+
+type ClientList map[*Client]bool
+
+type Client struct {
+	connection *websocket.Conn
+	manager    *Manager
+
+	// Egress is used to avoid concurrent writes on the web socket connection
+	egress chan Event
+
+	// Add User details so we know who this connection belongs to
+	UserID  uint
+	Role    string
+	GamePIN string
+
+	closeOnce sync.Once
+	done      chan struct{}
+}
+
+func NewClient(conn *websocket.Conn, manager *Manager, userID uint, role string, pin string) *Client {
+	return &Client{
+		connection: conn,
+		manager:    manager,
+		egress:     make(chan Event, 100),
+		UserID:     userID,
+		Role:       role,
+		GamePIN:    pin,
+		done:       make(chan struct{}),
+	}
+}
+
+func (c *Client) shutdown() {
+	c.closeOnce.Do(func() {
+		close(c.done)
+	})
+}
+
+func (c *Client) readMessage() {
+	defer func() {
+		// cleanup connection
+		c.manager.removeClient(c)
+	}()
+
+	if err := c.connection.SetReadDeadline(time.Now().Add(pongWait)); err != nil {
+		log.Println("error setting read deadline:", err)
+		return
+	}
+
+	// c.connection.SetReadLimit(1024) // We will be Back and Set it Later NOT RIGHT NOW
+
+	c.connection.SetPongHandler(c.pongHandler)
+
+	for {
+		_, payload, err := c.connection.ReadMessage()
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				log.Println("error reading message:", err)
+			}
+			break
+		}
+
+		var request Event
+		if err := json.Unmarshal(payload, &request); err != nil {
+			log.Println("error marshalling message:", err)
+			break
+		}
+
+		if err := c.manager.routeEvent(request, c); err != nil {
+			log.Println("error handling message:", err)
+		}
+	}
+}
+
+func (c *Client) writeMessage() {
+	defer func() {
+		// cleanup connection
+		c.manager.removeClient(c)
+	}()
+
+	ticker := time.NewTicker(pingPeriod)
+	defer ticker.Stop()
+	defer c.connection.Close()
+
+	for {
+		select {
+		case <-c.done:
+			return
+		case massage, ok := <-c.egress:
+			if !ok {
+				return
+			}
+
+			data, err := json.Marshal(massage)
+			if err != nil {
+				log.Println("failed to marshal event", err)
+				return
+			}
+
+			if err := c.connection.WriteMessage(websocket.TextMessage, data); err != nil {
+				log.Println("failed to send message", err)
+			}
+			log.Println("message sent")
+
+		case <-ticker.C:
+			if err := c.connection.WriteMessage(websocket.PingMessage, []byte(``)); err != nil {
+				return
+			}
+
+		}
+	}
+}
+
+func (c *Client) pongHandler(pongMsg string) error {
+	// log.Println("pong")
+	return c.connection.SetReadDeadline(time.Now().Add(pongWait))
+}

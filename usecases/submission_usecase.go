@@ -2,6 +2,8 @@ package usecases
 
 import (
 	"errors"
+	"log"
+	"qlass-be/domain/entities"
 	"qlass-be/domain/repositories"
 	"qlass-be/dtos"
 	"qlass-be/transforms"
@@ -13,24 +15,74 @@ type SubmissionUseCase interface {
 	CreateSubmission(dto dtos.CreateSubmissionDto, studentID uint) error
 	GetSubmissionByID(id uint) (*dtos.GetSubmissionResponseDto, error)
 	GetSubmissonByMaterialIDAndStudentID(classMaterialID uint, studentID uint) (*dtos.GetSubmissionResponseDto, error)
-	GetSubmissionsByMaterialID(classMaterialID uint) ([]*dtos.GetSubmissionResponseDto, error)
-	GetSubmissionsByStudentID(studentID uint) ([]*dtos.GetSubmissionResponseDto, error)
+	TeacherGetStudentScoreListsByUserAndClassID(req dtos.TeacherGetStudentScoreListsByUserAndClassIDRequestDto, teacherID uint) (*dtos.GetStudentScoresResponseDto, error)
+	GetStudentSubmissionsByClass(req dtos.GetStudentSubmissionsByClassRequestDto, teacherID uint) ([]*dtos.GetStudentScoresResponseDto, error)
+	GetSubmissionsByMaterialID(classMaterialID uint, teacherId uint) (*dtos.GetSubmissionsByClassMaterialResponseDto, error)
+	GetSubmissionsByStudentID(studentID uint) (*dtos.GetSubmissionsByClassMaterialResponseDto, error)
+	StudentSaveSubmission(dto dtos.StudentSaveSubmissionDto, studentID uint) error
+	TeacherSaveSubmission(dto dtos.TeacherSaveSubmissionDto, teacherID uint) error
 }
-
 type submissionUseCase struct {
 	submissionRepo    repositories.SubmissionRepository
 	classMaterialRepo repositories.ClassMaterialRepository
 	attachmentRepo    repositories.AttachmentRepository
+	classRepo         repositories.ClassRepository
+	enrollRepo        repositories.EnrollRepository
+	userRepo          repositories.UserRepository
+	userUsecase       UserUseCase
 	attachmentUseCase AttachmentUseCase
 }
 
-func NewSubmissionUseCase(submissionRepo repositories.SubmissionRepository, classMaterialRepo repositories.ClassMaterialRepository, attachmentRepo repositories.AttachmentRepository, attachmentUseCase AttachmentUseCase) SubmissionUseCase {
+func NewSubmissionUseCase(
+	submissionRepo repositories.SubmissionRepository,
+	classMaterialRepo repositories.ClassMaterialRepository,
+	attachmentRepo repositories.AttachmentRepository,
+	attachmentUseCase AttachmentUseCase,
+	classRepo repositories.ClassRepository,
+	enrollRepo repositories.EnrollRepository,
+	userUsecase UserUseCase,
+	userRepo repositories.UserRepository) SubmissionUseCase {
 	return &submissionUseCase{
 		submissionRepo:    submissionRepo,
 		classMaterialRepo: classMaterialRepo,
 		attachmentRepo:    attachmentRepo,
 		attachmentUseCase: attachmentUseCase,
+		classRepo:         classRepo,
+		enrollRepo:        enrollRepo,
+		userUsecase:       userUsecase,
+		userRepo:          userRepo,
 	}
+}
+
+func buildStudentScoreResponse(materials []*entities.ClassMaterial, submissions []*entities.Submission, student *entities.User, profileImgURL string) *dtos.GetStudentScoresResponseDto {
+	submissionByMaterialID := make(map[uint]*entities.Submission, len(submissions))
+	for _, submission := range submissions {
+		submissionByMaterialID[submission.ClassMaterialID] = submission
+	}
+
+	scores := make([]*dtos.StudentScoreDto, 0, len(materials))
+	totalMaxScore := 0
+	totalStudentScore := 0
+
+	for _, material := range materials {
+		if material.Type != "assignment" && material.Type != "quiz" {
+			continue
+		}
+
+		if material.Points == nil {
+			continue
+		}
+
+		score := transforms.EntityToStudentScoreDto(material, submissionByMaterialID[material.ID])
+		scores = append(scores, score)
+		totalMaxScore += *material.Points
+
+		if score.Score != nil {
+			totalStudentScore += *score.Score
+		}
+	}
+
+	return transforms.ToGetStudentScoresResponseDto(scores, student, profileImgURL, totalMaxScore, totalStudentScore)
 }
 
 func (u *submissionUseCase) CreateSubmission(dto dtos.CreateSubmissionDto, studentID uint) error {
@@ -99,32 +151,260 @@ func (u *submissionUseCase) GetSubmissionByID(id uint) (*dtos.GetSubmissionRespo
 		return nil, err
 	}
 
-	return transforms.EntityToGetSubmissionResponseDto(val, attachments), nil
+	imgUrl := u.userUsecase.GetProfileImgUrlByUserID(val.UserID)
+
+	return transforms.EntityToGetSubmissionResponseDto(val, attachments, imgUrl), nil
 }
 
 func (u *submissionUseCase) GetSubmissonByMaterialIDAndStudentID(classMaterialID uint, studentID uint) (*dtos.GetSubmissionResponseDto, error) {
-	val, err := u.submissionRepo.GetByClassMaterialIDAndStudentID(classMaterialID, studentID)
-
+	// Use FirstOrCreate to atomically get or create submission (prevents race condition duplicates)
+	baseSubmission := transforms.CreateBaseSubmissionEntity(studentID, classMaterialID)
+	val, err := u.submissionRepo.FirstOrCreate(baseSubmission, classMaterialID, studentID)
 	if err != nil {
 		return nil, err
 	}
 
-	if val == nil {
-		return nil, nil
-	}
+	imgUrl := u.userUsecase.GetProfileImgUrlByUserID(val.UserID)
 
 	attachments, err := u.attachmentUseCase.GetAttachmentsByOwner("submission", val.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	return transforms.EntityToGetSubmissionResponseDto(val, attachments), nil
+	return transforms.EntityToGetSubmissionResponseDto(val, attachments, imgUrl), nil
 }
 
-func (u *submissionUseCase) GetSubmissionsByMaterialID(classMaterialID uint) ([]*dtos.GetSubmissionResponseDto, error) {
+func (u *submissionUseCase) TeacherGetStudentScoreListsByUserAndClassID(req dtos.TeacherGetStudentScoreListsByUserAndClassIDRequestDto, teacherID uint) (*dtos.GetStudentScoresResponseDto, error) {
+	classData, err := u.classRepo.GetByID(req.ClassID)
+	if err != nil {
+		return nil, errors.New("class not found")
+	}
+
+	if classData.OwnerID != teacherID {
+		return nil, errors.New("unauthorized : not owner of class")
+	}
+
+	student, err := u.userRepo.GetByID(req.StudentID)
+	if err != nil {
+		return nil, errors.New("student not found")
+	}
+
+	materials, err := u.classMaterialRepo.GetByClassID(req.ClassID)
+	if err != nil {
+		return nil, err
+	}
+
+	submissions, err := u.submissionRepo.GetByStudentID(req.StudentID)
+	if err != nil {
+		return nil, err
+	}
+
+	profileImgURL := u.userUsecase.GetProfileImgUrlByUserID(req.StudentID)
+
+	return buildStudentScoreResponse(materials, submissions, student, profileImgURL), nil
+}
+
+func (u *submissionUseCase) GetStudentSubmissionsByClass(req dtos.GetStudentSubmissionsByClassRequestDto, teacherID uint) ([]*dtos.GetStudentScoresResponseDto, error) {
+	classData, err := u.classRepo.GetByID(req.ClassID)
+	if err != nil {
+		return nil, errors.New("class not found")
+	}
+
+	if classData.OwnerID != teacherID {
+		return nil, errors.New("unauthorized : not owner of class")
+	}
+
+	materials, err := u.classMaterialRepo.GetByClassID(req.ClassID)
+	if err != nil {
+		return nil, err
+	}
+
+	enrollments, err := u.enrollRepo.GetEnrolledStudentsByClassID(req.ClassID)
+	if err != nil {
+		return nil, err
+	}
+
+	responses := make([]*dtos.GetStudentScoresResponseDto, 0, len(enrollments))
+	for _, enrollment := range enrollments {
+		if enrollment.Role != "student" || enrollment.Status != "active" {
+			continue
+		}
+
+		submissions, err := u.submissionRepo.GetByStudentID(enrollment.UserID)
+		if err != nil {
+			return nil, err
+		}
+
+		profileImgURL := u.userUsecase.GetProfileImgUrlByUserID(enrollment.UserID)
+		student := enrollment.User
+		responses = append(responses, buildStudentScoreResponse(materials, submissions, &student, profileImgURL))
+	}
+
+	return responses, nil
+}
+
+func (u *submissionUseCase) GetSubmissionsByMaterialID(classMaterialID uint, teacherId uint) (
+	*dtos.GetSubmissionsByClassMaterialResponseDto, error) {
+	submissions, err := u.submissionRepo.GetByClassMaterialID(classMaterialID)
+	if err != nil {
+		return nil, err
+	}
+
+	var submissionDtos []*dtos.TeacherGetSubmissionResponseDto
+	for _, submission := range submissions {
+		if submission.Status != "draft" && submission.SubmittedAt != nil {
+			attachments, err := u.attachmentUseCase.GetAttachmentsByOwner("submission", submission.ID)
+			if err != nil {
+				return nil, err
+			}
+
+			log.Println("Submission ID:", submission.ID, "has", len(attachments), "attachments")
+
+			student, err := u.userRepo.GetByID(submission.UserID)
+			if err != nil {
+				return nil, err
+			}
+
+			var profileImgURL string
+			if student.ProfileImgAttachment != nil && student.ProfileImgAttachment.ObjectKey != "" {
+				url, err := u.attachmentUseCase.GenerateFileURL(student.ProfileImgAttachment.ObjectKey)
+				if err == nil {
+					profileImgURL = url
+				} else {
+					log.Println("Error generating profile image URL:", err)
+				}
+			}
+
+			if profileImgURL == "" {
+				profileImgURL = "https://ui-avatars.com/api/?name=" + student.FirstName + "+" + student.LastName
+			}
+
+			submissionDtos = append(submissionDtos, transforms.EntityToTeacherGetSubmissionResponseDto(submission, attachments, student, profileImgURL))
+		}
+	}
+
+	res := &dtos.GetSubmissionsByClassMaterialResponseDto{
+		Submissions: submissionDtos,
+	}
+
+	return res, nil
+}
+
+func (u *submissionUseCase) GetSubmissionsByStudentID(studentID uint) (*dtos.GetSubmissionsByClassMaterialResponseDto, error) {
 	return nil, nil
 }
 
-func (u *submissionUseCase) GetSubmissionsByStudentID(studentID uint) ([]*dtos.GetSubmissionResponseDto, error) {
-	return nil, nil
+func (u *submissionUseCase) StudentSaveSubmission(req dtos.StudentSaveSubmissionDto, studentID uint) error {
+	submission, err := u.submissionRepo.GetByID(req.ID)
+	if err != nil {
+		return err
+	}
+
+	if submission == nil {
+		return errors.New("submission not found")
+	}
+
+	if submission.UserID != studentID {
+		return errors.New("unauthorized")
+	}
+
+	if req.StudentComment != "" && req.StudentComment != submission.StudentComment {
+		submission.StudentComment = req.StudentComment
+	}
+
+	if submission.Status == "graded" {
+		return errors.New("submission already graded")
+	}
+
+	if req.Status == "draft" && submission.Status != "draft" {
+		submission.Status = "draft"
+		submission.SubmittedAt = nil
+		submission.IsLate = false
+	}
+
+	if req.Status == "submit" && (submission.Status != "submit" && submission.SubmittedAt == nil) {
+		submission.Status = "submit"
+		now := time.Now()
+		submission.SubmittedAt = &now
+
+		if submission.ClassMaterial.DueAt != nil && submission.SubmittedAt.After(*submission.ClassMaterial.DueAt) {
+			submission.Status = "late"
+			submission.IsLate = true
+		}
+	}
+
+	// UnAttach all old Attachment
+	attachments, err := u.attachmentRepo.GetByOwnerTypeAndOwnerID("submission", submission.ID)
+	if err == nil {
+		for _, att := range attachments {
+			att.OwnerID = nil
+			att.OwnerType = nil
+			if err := u.attachmentRepo.Update(att); err != nil {
+				return err
+			}
+		}
+	}
+
+	for _, attachmentID := range req.AttchmentIds {
+		attachment, err := u.attachmentRepo.GetByID(attachmentID)
+		if err != nil {
+			return err
+		}
+
+		attachment.OwnerType = utils.Ptr("submission")
+		attachment.OwnerID = &submission.ID
+
+		err = u.attachmentRepo.Update(attachment)
+		if err != nil {
+			return err
+		}
+	}
+
+	err = u.submissionRepo.Update(submission)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (u *submissionUseCase) TeacherSaveSubmission(req dtos.TeacherSaveSubmissionDto, teacherID uint) error {
+	submission, err := u.submissionRepo.GetByID(req.SubmissionID)
+	if err != nil {
+		return err
+	}
+
+	if submission == nil {
+		return errors.New("submission not found")
+	}
+
+	classMaterial, err := u.classMaterialRepo.GetByID(submission.ClassMaterialID)
+	if err != nil {
+		return errors.New("class material not found")
+	}
+
+	class, err := u.classRepo.GetByID(classMaterial.ClassID)
+	if err != nil {
+		return errors.New("class not found")
+	}
+
+	if class.OwnerID != teacherID {
+		log.Println(classMaterial.Class.OwnerID, teacherID)
+		return errors.New("unauthorized : not owner of class")
+	}
+
+	if submission.Status != "draft" && submission.SubmittedAt == nil {
+		return errors.New("submission is not submitted")
+	}
+
+	submission.Score = &req.Score
+	submission.TeacherFeedback = req.Feedback
+	submission.Status = "graded"
+
+	err = u.submissionRepo.Update(submission)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

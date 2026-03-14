@@ -1,5 +1,7 @@
 package dtos
 
+import "qlass-be/domain/entities"
+
 type RegisterRequestStepOneDto struct {
 	UniversityID string `json:"university_id" binding:"required"`
 	Email        string `json:"email" binding:"required,email"`
@@ -35,16 +37,18 @@ type ResponseRegisterStepTwoDto struct {
 }
 
 type UserDisplayData struct {
-	UniversityID string `json:"university_id"`
-	Email        string `json:"email"`
-	FirstName    string `json:"first_name"`
-	LastName     string `json:"last_name"`
-	Role         string `json:"role"`
+	ID            uint   `json:"id"`
+	UniversityID  string `json:"university_id"`
+	Email         string `json:"email"`
+	ProfileImgUrl string `json:"profile_img_url"`
+	FirstName     string `json:"first_name"`
+	LastName      string `json:"last_name"`
+	Role          string `json:"role"`
 }
 
 type LoginRequestDto struct {
-	UniversityID string `json:"university_id" validate:"required"`
-	Password     string `json:"password" validate:"required"`
+	Identifier string `json:"identifier" validate:"required"` // Accepts Email OR University ID
+	Password   string `json:"password" validate:"required"`
 }
 
 type LoginResponseDto struct {
@@ -64,4 +68,55 @@ type CreateTeacherRequestDto struct {
 type CreateTeacherResponseDto struct {
 	Message string `json:"message"`
 	UserID  uint   `json:"user_id"`
+}
+
+type UpdateUserRequestDto struct {
+	FirstName              string `json:"first_name"`
+	LastName               string `json:"last_name"`
+	ProfileImgAttachmentID uint   `json:"profile_img_attachment_id"`
+	ProfileAttachmentID    uint   `json:"profile_attachment_id"`
+}
+
+type ChangePasswordRequestDto struct {
+	CurrentPassword string `json:"current_password" binding:"required"`
+	NewPassword     string `json:"new_password" binding:"required,min=6"`
+}
+
+type ChangePasswordResponseDto struct {
+	Message string `json:"message"`
+}
+
+type ForgetPasswordStep1RequestDto struct {
+	UniversityID string `json:"university_id" binding:"required"`
+}
+
+type ForgetPasswordStep1ResponseDto struct {
+	Message string `json:"message"`
+	Email   string `json:"email"`
+}
+
+type TempForgetPasswordData struct {
+	UniversityID string        `json:"university_id" binding:"required"`
+	OTP          string        `json:"otp" binding:"required"`
+	User         entities.User `json:"user"`
+}
+
+type ForgetPasswordStep2RequestDto struct {
+	UniversityID string `json:"university_id" binding:"required"`
+	OTP          string `json:"otp" binding:"required"`
+	NewPassword  string `json:"new_password" binding:"required,min=6"`
+}
+
+type ForgetPasswordStep2ResponseDto struct {
+	Message string `json:"message"`
+}
+
+type AdminUpdateUserRequestDto struct {
+	UserID       uint   `json:"user_id" binding:"required"`
+	UniversityID string `json:"university_id"`
+	Email        string `json:"email"`
+	NewPassword  string `json:"new_password"`
+	FirstName    string `json:"first_name"`
+	LastName     string `json:"last_name"`
+	Role         string `json:"role"`
 }

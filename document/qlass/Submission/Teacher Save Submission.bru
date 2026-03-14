@@ -1,0 +1,28 @@
+meta {
+  name: Teacher Save Submission
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{base_url}}/submissions/teacher
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoidGVhY2hlciIsImV4cCI6MTc3Mjc4Nzc4Mn0.PHvpSYlBo9KYfd9Krv3c8yNXeZng2Qrebxp3Byeqs3I
+}
+
+body:json {
+  {
+    "submission_id": 1,
+    "score": 50,
+    "feedback": "Test Feedback"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

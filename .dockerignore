@@ -1,0 +1,21 @@
+# flyctl launch added from .gitignore
+# Secrets (NEVER PUSH THESE)
+**/.env
+
+# Binaries / Executables
+**/main
+**/main.exe
+**/*.exe
+**/tmp
+
+# OS generated files
+**/.DS_Store
+**/Thumbs.db
+
+# IDE settings (Optional)
+**/.vscode
+**/.idea
+
+# Vendor (if you ever use it)
+**/vendor
+fly.toml

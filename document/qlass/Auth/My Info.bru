@@ -1,0 +1,20 @@
+meta {
+  name: My Info
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{base_url}}/auth/my-info
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozLCJyb2xlIjoic3R1ZGVudCIsImV4cCI6MTc3MzUxMjEzNn0.0FmJpJTJCLqA-_o8ramuWWi24BWIKJ0vEnSynh4RN6Q
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

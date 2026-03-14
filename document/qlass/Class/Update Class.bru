@@ -1,0 +1,28 @@
+meta {
+  name: Update Class
+  type: http
+  seq: 7
+}
+
+put {
+  url: {{base_url}}/classes/update
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoidGVhY2hlciIsImV4cCI6MTc3MjcyOTc5MX0.9ox3BqRAb6nTRxQ_Z-lv8apyec4oN8_k1JGFh2mTurk
+}
+
+body:json {
+  {
+    "class_id": 1,
+    "name": "Introduction to Com Science",
+    "hide": true
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

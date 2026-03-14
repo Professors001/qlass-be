@@ -2,10 +2,10 @@ package dtos
 
 type CreateClassRequestDto struct {
 	Name        string `json:"name" binding:"required"`
-	Description string `json:"description" binding:"required"`
+	Description string `json:"description"`
 	Section     string `json:"section" binding:"required"`
 	Term        string `json:"term" binding:"required"`
-	Room        string `json:"room" binding:"required"`
+	Room        string `json:"room"`
 }
 
 type CreateClassResponseDto struct {
@@ -57,4 +57,19 @@ type SummaryEnrolledStudentsDto struct {
 type GetEnrolledStudentsResponseDto struct {
 	Message string            `json:"message"`
 	Data    StudentDetailsDto `json:"data"`
+}
+
+type UpdateClassRequestDto struct {
+	ClassId     uint   `json:"class_id" binding:"required"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Section     string `json:"section"`
+	Term        string `json:"term"`
+	Room        string `json:"room"`
+	Hide        bool   `json:"hide"`
+}
+
+type UnenrollRequestDto struct {
+	ClassId uint `json:"class_id" binding:"required"`
+	UserId  uint `json:"user_id" binding:"required"`
 }

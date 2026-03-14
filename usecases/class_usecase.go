@@ -18,27 +18,38 @@ type ClassUseCase interface {
 	GetAllMyClasses(ctx context.Context, userID uint) ([]dtos.ClassDetailsDto, error)
 	EnrollStudent(ctx context.Context, inviteCode string, studentID uint) error
 	GetEnrolledStudentsByClassID(ctx context.Context, classID uint) (*dtos.SummaryEnrolledStudentsDto, error)
-	GetClassByID(ctx context.Context, classID uint, userID uint) (*dtos.ClassDetailsDto, error)
+	GetClassByIDAndUserID(classID uint, userID uint) (*dtos.ClassDetailsDto, error)
+	GetClassByID(classID uint) (*entities.Class, error)
+	UpdateClass(req *dtos.UpdateClassRequestDto, userID uint) error
+	UnEnrollStudent(classID uint, studentID uint, userID uint) error
+	BanStudent(classID uint, studentID uint, userID uint) error
 }
 
 type classUseCase struct {
-	classRepo  repositories.ClassRepository
-	enrollRepo repositories.EnrollRepository
+	classRepo         repositories.ClassRepository
+	enrollRepo        repositories.EnrollRepository
+	userRepo          repositories.UserRepository
+	userUseCase       UserUseCase
+	attachmentUseCase AttachmentUseCase
 }
 
-func NewClassUseCase(classRepo repositories.ClassRepository, enrollRepo repositories.EnrollRepository) ClassUseCase {
+func NewClassUseCase(classRepo repositories.ClassRepository,
+	enrollRepo repositories.EnrollRepository,
+	userRepo repositories.UserRepository,
+	userUseCase UserUseCase,
+	attachmentUC AttachmentUseCase) ClassUseCase {
 	return &classUseCase{
-		classRepo:  classRepo,
-		enrollRepo: enrollRepo,
+		classRepo:         classRepo,
+		enrollRepo:        enrollRepo,
+		userRepo:          userRepo,
+		userUseCase:       userUseCase,
+		attachmentUseCase: attachmentUC,
 	}
 }
 
 func (c *classUseCase) CreateClass(ctx context.Context, req *dtos.CreateClassRequestDto, ownerID uint) (*dtos.CreateClassResponseDto, error) {
 	// 1. Generate Invite Code
-	inviteCode, err := c.generateUniqueInviteCode(ctx)
-	if err != nil {
-		return nil, err
-	}
+	inviteCode := utils.GenerateRandomString(6)
 
 	// 2. Map DTO to Entity
 	class := &entities.Class{
@@ -80,7 +91,10 @@ func (c *classUseCase) GetClassDetailsByID(ctx context.Context, classID uint) (*
 		return nil, err
 	}
 
-	classDetailsDto := transforms.EntityToClassDetailsDto(*class)
+	owner, _ := c.userRepo.GetByID(class.OwnerID)
+	profileImg := c.getOwnerProfileImg(owner)
+
+	classDetailsDto := transforms.EntityToClassDetailsDto(*class, profileImg)
 
 	return &classDetailsDto, nil
 }
@@ -91,7 +105,10 @@ func (c *classUseCase) GetClassDetailsByInviteCode(ctx context.Context, inviteCo
 		return nil, err
 	}
 
-	classDetailsDto := transforms.EntityToClassDetailsDto(*class)
+	owner, _ := c.userRepo.GetByID(class.OwnerID)
+	profileImg := c.getOwnerProfileImg(owner)
+
+	classDetailsDto := transforms.EntityToClassDetailsDto(*class, profileImg)
 
 	return &classDetailsDto, nil
 }
@@ -104,7 +121,12 @@ func (c *classUseCase) GetAllMyClasses(ctx context.Context, userID uint) ([]dtos
 
 	var result []dtos.ClassDetailsDto
 	for _, enrollment := range enrollments {
-		dto := transforms.EntityToClassDetailsDto(enrollment.Class)
+		// Optimization: If your classRepo.GetByUserID preloads the Class AND the Owner,
+		// you can just use enrollment.Class.Owner here to save database hits!
+		owner, _ := c.userRepo.GetByID(enrollment.Class.OwnerID)
+		profileImg := c.getOwnerProfileImg(owner)
+
+		dto := transforms.EntityToClassDetailsDto(enrollment.Class, profileImg)
 		dto.Role = enrollment.Role
 		result = append(result, dto)
 	}
@@ -114,6 +136,49 @@ func (c *classUseCase) GetAllMyClasses(ctx context.Context, userID uint) ([]dtos
 	}
 
 	return result, nil
+}
+
+func (c *classUseCase) GetClassByIDAndUserID(classID uint, userID uint) (*dtos.ClassDetailsDto, error) {
+	enrollments, err := c.classRepo.GetByUserID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	var class *entities.Class
+	var role string
+	for _, enrollment := range enrollments {
+		if enrollment.ClassID == classID {
+			class = &enrollment.Class
+			role = enrollment.Role
+			break
+		}
+	}
+
+	if class == nil {
+		return nil, errors.New("class not found or not enrolled")
+	}
+
+	owner, _ := c.userRepo.GetByID(class.OwnerID)
+	profileImg := c.getOwnerProfileImg(owner)
+
+	classDetailsDto := transforms.EntityToClassDetailsDto(*class, profileImg)
+	classDetailsDto.Role = role
+
+	return &classDetailsDto, nil
+}
+
+func (c *classUseCase) GetClassByID(classID uint) (*entities.Class, error) {
+	class, err := c.classRepo.GetByID(classID)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if class == nil {
+		return nil, errors.New("class not found")
+	}
+
+	return class, nil
 }
 
 func (c *classUseCase) EnrollStudent(ctx context.Context, inviteCode string, studentID uint) error {
@@ -143,9 +208,16 @@ func (c *classUseCase) GetEnrolledStudentsByClassID(ctx context.Context, classID
 	var students []dtos.StudentDetailsDto
 
 	for _, enrollment := range enrollments {
-		dto := transforms.EntityToStudentDetailsDto(enrollment)
+		userDto, err := c.userUseCase.GetUserData(enrollment.UserID)
+		if err != nil {
+			return nil, err
+		}
+
+		dto := transforms.UserDtoToStudentDetailsDto(userDto, enrollment)
+
 		if enrollment.Role == "teacher" || enrollment.Role == "ta" {
 			teachers = append(teachers, dto)
+
 		} else {
 			students = append(students, dto)
 		}
@@ -159,46 +231,136 @@ func (c *classUseCase) GetEnrolledStudentsByClassID(ctx context.Context, classID
 	}, nil
 }
 
-func (c *classUseCase) GetClassByID(ctx context.Context, classID uint, userID uint) (*dtos.ClassDetailsDto, error) {
+func (c *classUseCase) UpdateClass(req *dtos.UpdateClassRequestDto, userID uint) error {
+	class, err := c.classRepo.GetByID(req.ClassId)
 
-	enrollments, err := c.classRepo.GetByUserID(userID)
 	if err != nil {
-		return nil, err
-	}
-
-	var class *entities.Class
-	var role string
-	for _, enrollment := range enrollments {
-		if enrollment.ClassID == classID {
-			class = &enrollment.Class
-			role = enrollment.Role
-			break
-		}
+		return err
 	}
 
 	if class == nil {
-		return nil, errors.New("class not found or not enrolled")
+		return errors.New("class not found")
 	}
 
-	classDetailsDto := transforms.EntityToClassDetailsDto(*class)
-	classDetailsDto.Role = role
+	if class.OwnerID != userID {
+		return errors.New("unauthorized")
+	}
 
-	return &classDetailsDto, nil
+	newClass := transforms.UpdateClassReqToClassEntity(req, class)
+
+	err = c.classRepo.Update(&newClass)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (c *classUseCase) generateUniqueInviteCode(_ context.Context) (string, error) {
-	const maxRetries = 10
-	const codeLength = 6
-
-	for i := 0; i < maxRetries; i++ {
-		code := utils.GenerateRandomString(codeLength)
-
-		_, err := c.classRepo.GetByInviteCode(code)
-		if err != nil {
-			return code, nil
-		}
-
+func (c *classUseCase) UnEnrollStudent(classID uint, studentID uint, userID uint) error {
+	class, err := c.classRepo.GetByID(classID)
+	if err != nil {
+		return err
 	}
 
-	return "", errors.New("failed to generate unique invite code: maximum retries reached")
+	if class == nil {
+		return errors.New("class not found")
+	}
+
+	if class.OwnerID != userID {
+		return errors.New("unauthorized")
+	}
+
+	enrollment, err := c.enrollRepo.GetEnrollmentByClassIDAndUserID(class.ID, studentID)
+	if err != nil {
+		return err
+	}
+
+	if enrollment == nil {
+		return errors.New("student not enrolled in this class")
+	}
+
+	err = c.enrollRepo.RemoveStudent(class.ID, studentID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *classUseCase) BanStudent(classID uint, studentID uint, userID uint) error {
+	class, err := c.classRepo.GetByID(classID)
+	if err != nil {
+		return err
+	}
+
+	if class == nil {
+		return errors.New("class not found")
+	}
+
+	if class.OwnerID != userID {
+		return errors.New("unauthorized")
+	}
+
+	enrollment, err := c.enrollRepo.GetEnrollmentByClassIDAndUserID(class.ID, studentID)
+	if err != nil {
+		return err
+	}
+
+	if enrollment == nil {
+		return errors.New("student not enrolled in this class")
+	}
+
+	if enrollment.Role == "teacher" {
+		return errors.New("cannot ban a teacher")
+	}
+
+	enrollment.Status = "banned"
+	err = c.enrollRepo.UpdateStatus(enrollment)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *classUseCase) getOwnerProfileImg(owner *entities.User) string {
+	if owner == nil {
+		return ""
+	}
+
+	var profileImgURL string
+	if owner.ProfileImgAttachment != nil && owner.ProfileImgAttachment.ObjectKey != "" {
+		url, err := c.attachmentUseCase.GenerateFileURL(owner.ProfileImgAttachment.ObjectKey)
+		if err == nil {
+			profileImgURL = url
+		}
+	}
+
+	if profileImgURL == "" {
+		profileImgURL = "https://ui-avatars.com/api/?name=" + owner.FirstName + "+" + owner.LastName
+	}
+
+	return profileImgURL
+}
+
+func (c *classUseCase) getOwnerProfileImgByUserID(userID uint) string {
+	owner, err := c.userRepo.GetByID(userID)
+	if err != nil || owner == nil {
+		return ""
+	}
+
+	var profileImgURL string
+	if owner.ProfileImgAttachment != nil && owner.ProfileImgAttachment.ObjectKey != "" {
+		url, err := c.attachmentUseCase.GenerateFileURL(owner.ProfileImgAttachment.ObjectKey)
+		if err == nil {
+			profileImgURL = url
+		}
+	}
+
+	if profileImgURL == "" {
+		profileImgURL = "https://ui-avatars.com/api/?name=" + owner.FirstName + "+" + owner.LastName
+	}
+
+	return profileImgURL
 }

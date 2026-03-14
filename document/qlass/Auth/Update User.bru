@@ -1,0 +1,26 @@
+meta {
+  name: Update User
+  type: http
+  seq: 7
+}
+
+put {
+  url: {{base_url}}/auth/update
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozLCJyb2xlIjoic3R1ZGVudCIsImV4cCI6MTc3MzUxMzIwOH0.rcQMn9l3nKabCRUk5C9v_7m0ZJKE0QS8-YIdJXjVKpI
+}
+
+body:json {
+  {
+    "profile_img_attachment_id": 1
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

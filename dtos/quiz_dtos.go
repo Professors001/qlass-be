@@ -1,6 +1,7 @@
 package dtos
 
 type SaveQuizDto struct {
+	ClassID                uint   `json:"class_id" binding:"required"`
 	Title                  string `json:"title" binding:"required"`
 	Description            string `json:"description"`
 	DefaultTimePerQuestion int    `json:"default_time_per_question" binding:"required,min=10"`
@@ -27,7 +28,7 @@ type SaveQuizOption struct {
 
 type GetQuizResponseDto struct {
 	ID                     uint                      `json:"id"`
-	UserID                 uint                      `json:"user_id"`
+	ClassID                uint                      `json:"class_id"`
 	Title                  string                    `json:"title"`
 	Description            string                    `json:"description"`
 	DefaultTimePerQuestion int                       `json:"default_time_per_question"`

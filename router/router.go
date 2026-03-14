@@ -4,8 +4,10 @@ import (
 	"net/http"
 	"qlass-be/adapters/api"
 	"qlass-be/adapters/api/rest"
+	"qlass-be/adapters/api/websocket"
 	"qlass-be/adapters/cache"
 	"qlass-be/adapters/databases"
+	"qlass-be/adapters/services"
 	"qlass-be/adapters/storage"
 	"qlass-be/config"
 	"qlass-be/middleware"
@@ -20,34 +22,50 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 
 	// Seed Users (Admin, Teacher, Student) if not exists
 	databases.SeedUsers(db)
+	emailService := services.NewSMTPEmailService(
+		cfg.SMTPHost,
+		cfg.SMTPPort,
+		cfg.SMTPUser,
+		cfg.SMTPPass,
+	)
+	attachmentRepo := databases.NewPostgresAttachmentRepository(db)
 
 	userRepo := databases.NewPostgresUserRepository(db)
 	userCacheRepo := cache.NewUserRedisRepository(cacheService)
-	userUseCase := usecases.NewUserUseCase(userRepo, userCacheRepo, jwtService)
+
+	attachmentUseCase := usecases.NewAttachmentUseCase(storageService, attachmentRepo, userRepo, cfg)
+	attachmentHandler := rest.NewAttachmentHandler(attachmentUseCase)
+
+	userUseCase := usecases.NewUserUseCase(userRepo, userCacheRepo, jwtService, emailService, attachmentUseCase)
 	userHandler := rest.NewUserHandler(userUseCase)
 
 	classRepo := databases.NewPostgresClassRepository(db)
 	enrollRepo := databases.NewPostgresEnrollRepository(db)
-	classUseCase := usecases.NewClassUseCase(classRepo, enrollRepo)
+	classUseCase := usecases.NewClassUseCase(classRepo, enrollRepo, userRepo, userUseCase, attachmentUseCase)
 	classHandler := rest.NewClassHandler(classUseCase)
 
-	attachmentRepo := databases.NewPostgresAttachmentRepository(db)
-	attachmentUseCase := usecases.NewAttachmentUseCase(storageService, attachmentRepo, userRepo, cfg)
-	attachmentHandler := rest.NewAttachmentHandler(attachmentUseCase)
+	quizRepo := databases.NewPostgresQuizRepository(db)
+	quizGameLogRepo := databases.NewPostgresQuizGameLogRepository(db)
 
 	classMaterialRepo := databases.NewPostgresClassMaterialRepository(db)
-	classMaterialUseCase := usecases.NewClassMaterialUseCase(classMaterialRepo, classRepo, attachmentRepo, attachmentUseCase)
+	classMaterialUseCase := usecases.NewClassMaterialUseCase(
+		classMaterialRepo, classRepo, attachmentRepo, attachmentUseCase, quizGameLogRepo, userUseCase, quizRepo)
 	classMaterialHandler := rest.NewMaterialHandler(classMaterialUseCase)
 
 	submissionRepo := databases.NewPostgresSubmissionRepository(db)
-	submissionUseCase := usecases.NewSubmissionUseCase(submissionRepo, classMaterialRepo, attachmentRepo, attachmentUseCase)
+	submissionUseCase := usecases.NewSubmissionUseCase(
+		submissionRepo, classMaterialRepo, attachmentRepo, attachmentUseCase, classRepo, enrollRepo, userUseCase, userRepo)
 	submissionHandler := rest.NewSubmissionHandler(submissionUseCase)
 
-	quizRepo := databases.NewPostgresQuizRepository(db)
 	quizQuestionRepo := databases.NewPostgresQuizQuestionRepository(db)
 	quizOptionRepo := databases.NewPostgresQuizOptionRepository(db)
-	quizUseCase := usecases.NewQuizUseCase(quizRepo, quizQuestionRepo, quizOptionRepo, attachmentRepo, attachmentUseCase)
+	quizStudentResponseRepo := databases.NewPostgresQuizStudentResponseRepository(db)
+	quizUseCase := usecases.NewQuizUseCase(classRepo, quizRepo, quizQuestionRepo, quizOptionRepo, attachmentRepo, attachmentUseCase)
 	quizHandler := rest.NewQuizHandler(quizUseCase)
+
+	gameRepo := cache.NewGameRedisRepository(cacheService)
+	gameUseCase := usecases.NewGameUseCase(gameRepo, quizGameLogRepo, classMaterialRepo, classRepo, enrollRepo, userRepo, userUseCase, submissionRepo, quizStudentResponseRepo)
+	gameHandler := rest.NewGameHandler(gameUseCase)
 
 	handler := api.ProvideHandler(
 		userHandler,
@@ -66,7 +84,14 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	userRouter.POST("/register-step-two", handler.UserHandler.RegisterSecondStep)
 	userRouter.POST("/login", handler.UserHandler.Login)
 	userRouter.GET("/me", middleware.AuthorizeJWT(jwtService), handler.UserHandler.Me)
+	userRouter.GET("/my-info", middleware.AuthorizeJWT(jwtService), handler.UserHandler.GetMyInfo)
+	userRouter.GET("/all-users", middleware.AuthorizeJWT(jwtService), handler.UserHandler.GetAllUsers)
 	userRouter.POST("/create-teacher", middleware.AuthorizeJWT(jwtService), handler.UserHandler.CreateTeacher)
+	userRouter.PUT("/update", middleware.AuthorizeJWT(jwtService), handler.UserHandler.UpdateUser)
+	userRouter.PUT("/change-password", middleware.AuthorizeJWT(jwtService), handler.UserHandler.ChangePassword)
+	userRouter.POST("/forgot-password-step-one", handler.UserHandler.ForgetPasswordStep1)
+	userRouter.POST("/forgot-password-step-two", handler.UserHandler.ForgetPasswordStep2)
+	userRouter.PUT("/admin-update", middleware.AuthorizeJWT(jwtService), handler.UserHandler.AdminUpdateuser)
 
 	// Classes
 	classRouter := r.Group("/classes")
@@ -76,6 +101,9 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	classRouter.POST("/join", middleware.AuthorizeJWT(jwtService), handler.ClassHandler.EnrollStudent)
 	classRouter.GET("/:id/students", middleware.AuthorizeJWT(jwtService), handler.ClassHandler.GetEnrolledStudents)
 	classRouter.GET("/invite/:code", handler.ClassHandler.GetClassDetailsByInviteCode)
+	classRouter.PUT("/update", middleware.AuthorizeJWT(jwtService), handler.ClassHandler.UpdateClass)
+	classRouter.PUT("/unenroll", middleware.AuthorizeJWT(jwtService), handler.ClassHandler.UnenrollStudent)
+	classRouter.PUT("/ban", middleware.AuthorizeJWT(jwtService), handler.ClassHandler.BanStudent)
 
 	// Attachments
 	attachmentRouter := r.Group("/attachments")
@@ -88,14 +116,23 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	materialRouter.Use(middleware.AuthorizeJWT(jwtService))
 	materialRouter.POST("", handler.ClassMaterialHandler.CreateMaterial)
 	materialRouter.GET("/:id", handler.ClassMaterialHandler.GetMaterialByID)
+	materialRouter.POST("/quiz", handler.ClassMaterialHandler.CreateQuizMaterial)
 	materialRouter.GET("/class/:class_id", handler.ClassMaterialHandler.GetMaterialsByClassID)
+	materialRouter.PUT("/post", handler.ClassMaterialHandler.UpdatePostMaterial)
+	materialRouter.PUT("/assignment", handler.ClassMaterialHandler.UpdateAssignmentMaterial)
+	materialRouter.PUT("/quiz", handler.ClassMaterialHandler.UpdateQuizMaterial)
+	materialRouter.DELETE("/:id", handler.ClassMaterialHandler.DeleteMaterial)
 
 	// Submissions
 	submissionRouter := r.Group("/submissions")
 	submissionRouter.Use(middleware.AuthorizeJWT(jwtService))
-	submissionRouter.POST("", handler.SubmissionHandler.CreateSubmission)
+	submissionRouter.GET("/class/:class_id", handler.SubmissionHandler.GetStudentSubmissionsByClass)
+	submissionRouter.POST("/scores", handler.SubmissionHandler.GetStudentScores)
 	submissionRouter.GET("/:id", handler.SubmissionHandler.GetSubmission)
 	submissionRouter.GET("/material/:class_material_id", handler.SubmissionHandler.GetSubmissonByMaterialIDAndStudentID)
+	submissionRouter.PUT("", middleware.AuthorizeJWT(jwtService), handler.SubmissionHandler.StudentSaveSubmission)
+	submissionRouter.PUT("/teacher", middleware.AuthorizeJWT(jwtService), handler.SubmissionHandler.TeacherSaveSubmission)
+	submissionRouter.GET("/materials/:class_material_id", handler.SubmissionHandler.GetSubmissionsByMaterialID)
 
 	// Quizzes
 	quizRouter := r.Group("/quizzes")
@@ -104,4 +141,39 @@ func SetUpRouters(r *gin.Engine, cfg *config.Config, db *gorm.DB, cacheService *
 	quizRouter.PUT("/:id", handler.QuizHandler.UpdateQuiz)
 	quizRouter.POST("/:id/questions", handler.QuizHandler.SaveQuizQuestion)
 	quizRouter.GET("/:id", handler.QuizHandler.GetQuiz)
+	quizRouter.GET("/class/:class_id", handler.QuizHandler.GetQuizzesByClassID)
+
+	// Games
+	gameRouter := r.Group("/games")
+	gameRouter.Use(middleware.AuthorizeJWT(jwtService))
+	gameRouter.POST("/start", gameHandler.StartGame)
+
+	// Websocket
+
+	manager := websocket.NewManager(gameUseCase)
+	r.GET("/ws", func(c *gin.Context) {
+		// 1. Get Token
+		tokenString := c.Query("token")
+		if tokenString == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Missing token"})
+			return
+		}
+
+		// 2. Get PIN (New)
+		pin := c.Query("pin")
+		if pin == "" {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Missing game pin"})
+			return
+		}
+
+		// 3. Validate Token
+		claims, err := jwtService.ValidateToken(tokenString)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+			return
+		}
+
+		// 4. Pass PIN to ServeWS
+		manager.ServeWS(c.Writer, c.Request, claims, pin)
+	})
 }

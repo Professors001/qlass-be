@@ -1,0 +1,20 @@
+meta {
+  name: Admin All Users
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{base_url}}/auth/all-users
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJyb2xlIjoiYWRtaW4iLCJleHAiOjE3NzM1MTIzMzR9.D7ab5e6ZvzIeiW64UXPaxCrHy6tU7h5do8aTubVlzlI
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

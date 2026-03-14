@@ -1,0 +1,27 @@
+meta {
+  name: UnEnroll Student From Class
+  type: http
+  seq: 8
+}
+
+put {
+  url: {{base_url}}/classes/unenroll
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoidGVhY2hlciIsImV4cCI6MTc3MzUxNzgyMn0.Kn-t4bqg7sV7FY01QyaAY7zHgioLCwmqgksomNzNBns
+}
+
+body:json {
+  {
+    "class_id": 1,
+    "user_id": 3
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

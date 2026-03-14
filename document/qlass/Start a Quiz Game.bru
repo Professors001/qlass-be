@@ -1,0 +1,26 @@
+meta {
+  name: Start a Quiz Game
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{base_url}}/games/start
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoidGVhY2hlciIsImV4cCI6MTc3MjI5NjgyMn0.war2GMsCVJyauuwUSvAU1aN9k2OApCM36UT46jq8j7E
+}
+
+body:json {
+  {
+    "class_material_id": 2
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -1,0 +1,26 @@
+meta {
+  name: Forgot Step 1
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{base_url}}/auth/forgot-password-step-one
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjo0LCJyb2xlIjoic3R1ZGVudCIsImV4cCI6MTc3MjcwMjQ3MH0.9xXC29bHMxyjIEWN6sMLuUwa81vjgttVC7CouYsvGoA
+}
+
+body:json {
+  {
+    "university_id": "6510451086"
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

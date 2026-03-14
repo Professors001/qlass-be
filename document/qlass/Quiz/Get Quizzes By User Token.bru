@@ -1,0 +1,20 @@
+meta {
+  name: Get Quizzes By User Token
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{base_url}}/quizzes/class/1
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoyLCJyb2xlIjoidGVhY2hlciIsImV4cCI6MTc3MTg3MjM2OX0.lzioyaFhI0MMfWic0uZs1GlpLbJLbjIxhwd9leEALiI
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

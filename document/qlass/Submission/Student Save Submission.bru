@@ -1,0 +1,29 @@
+meta {
+  name: Student Save Submission
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{base_url}}/submissions
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozLCJyb2xlIjoic3R1ZGVudCIsImV4cCI6MTc3Mjc1MDIyNn0.3I7P0kps2TVhJOjXQc_r0JBK4icwrtZxM1q2K-GWCNc
+}
+
+body:json {
+  {
+    "id": 1,
+    "student_comment": "Test",
+    "status": "draft",
+    "attachment_ids": [4, 5]
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

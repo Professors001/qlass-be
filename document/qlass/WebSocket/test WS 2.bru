@@ -1,0 +1,27 @@
+meta {
+  name: test WS 2
+  type: ws
+  seq: 2
+}
+
+ws {
+  url: ws://localhost:8080/ws?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjozLCJyb2xlIjoic3R1ZGVudCIsImV4cCI6MTc3MzU5NzUwNn0._DPLpYSRojxc_z41piPNAwajQgONpRVtjUZIKb0qdSk&pin=923840
+  body: ws
+  auth: none
+}
+
+body:ws {
+  name: message 1
+  type: json
+  content: '''
+    {
+      "type": "student_answer",
+      "payload": { "option_id": 19 }
+    }
+  '''
+}
+
+settings {
+  encodeUrl: false
+  timeout: 0
+}

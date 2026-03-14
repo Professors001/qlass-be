@@ -1,18 +1,22 @@
 package entities
 
-import "gorm.io/gorm"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 type Submission struct {
 	gorm.Model
-	ClassMaterialID uint          `json:"class_material_id" gorm:"not null"`
+	ClassMaterialID uint          `json:"class_material_id" gorm:"not null;uniqueIndex:idx_submission_material_user"`
 	ClassMaterial   ClassMaterial `json:"class_material" gorm:"foreignKey:ClassMaterialID"`
-	UserID          uint          `json:"user_id"`
+	UserID          uint          `json:"user_id" gorm:"uniqueIndex:idx_submission_material_user"`
 	User            User          `json:"user" gorm:"foreignKey:UserID"`
-	QuizLogID       *uint         `json:"quiz_log_id" gorm:"comment:Null if assignment"`
-	QuizGameLog     *QuizGameLog  `json:"quiz_game_log" gorm:"foreignKey:QuizLogID"`
 	StudentComment  string        `json:"student_comment" gorm:"type:text"`
 	Score           *int          `json:"score" gorm:"comment:e.g. 85/100"`
+	SubmittedAt     *time.Time    `json:"submitted_at"`
+	IsLate          bool          `json:"is_late" gorm:"default:false"`
 	TeacherFeedback string        `json:"teacher_feedback" gorm:"type:text"`
-	Status          string        `json:"status" gorm:"default:submitted;type:varchar(50);comment:submitted, graded, returned, late, draft"`
+	Status          string        `json:"status" gorm:"default:submitted;type:varchar(50);comment:submit, graded, return, late, draft"`
 	Attachments     []Attachment  `json:"attachments" gorm:"polymorphic:Owner;"`
 }

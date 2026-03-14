@@ -2,8 +2,10 @@ package usecases
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"mime/multipart"
+	"path/filepath"
 	"qlass-be/adapters/storage"
 	"qlass-be/config"
 	"qlass-be/domain/entities"
@@ -11,6 +13,7 @@ import (
 	"qlass-be/dtos"
 	"qlass-be/transforms"
 	"qlass-be/utils"
+	"strings"
 	"time"
 )
 
@@ -26,7 +29,9 @@ type AttachmentUseCase interface {
 	GetAttachmentByID(id uint) (*dtos.GetAttachmentResponseDto, error)
 	GetAttachmentsByOwner(ownerType string, ownerID uint) ([]*dtos.GetAttachmentResponseDto, error)
 	UpdateAttachment(dto *dtos.UpdateAttachmentDto) error
+	LinkAttachmentToUser(attachmentID uint, userID uint) error
 	DeleteAttachment(id uint) error
+	GenerateFileURL(objectKey string) (string, error)
 }
 
 type attachmentUseCase struct {
@@ -47,7 +52,7 @@ func NewAttachmentUseCase(storageService storage.StorageService, attachmentRepo 
 
 func (u *attachmentUseCase) UploadAttachment(userID uint, file *multipart.FileHeader) (*dtos.UploadAttachmentResponseDto, error) {
 	bucketName := u.cfg.MinioBucketName
-	objectName := fmt.Sprintf("%d_%s", time.Now().UnixNano(), file.Filename)
+	objectName := buildAttachmentObjectName(file.Filename)
 
 	err := u.storageService.Upload(context.Background(), file, bucketName, objectName)
 	if err != nil {
@@ -74,6 +79,31 @@ func (u *attachmentUseCase) UploadAttachment(userID uint, file *multipart.FileHe
 	}
 
 	return transforms.ToUploadAttachmentResponseDto(attachment, fileURL), nil
+}
+
+func buildAttachmentObjectName(filename string) string {
+	ext := sanitizeAttachmentExtension(filepath.Ext(filename))
+	return fmt.Sprintf("attachments/%d_%s%s", time.Now().UnixNano(), utils.GenerateRandomString(12), ext)
+}
+
+func sanitizeAttachmentExtension(ext string) string {
+	ext = strings.ToLower(strings.TrimSpace(ext))
+	if ext == "" {
+		return ""
+	}
+
+	for _, char := range ext {
+		if char == '.' {
+			continue
+		}
+		if char < 'a' || char > 'z' {
+			if char < '0' || char > '9' {
+				return ""
+			}
+		}
+	}
+
+	return ext
 }
 
 func (u *attachmentUseCase) GetAttachmentByID(id uint) (*dtos.GetAttachmentResponseDto, error) {
@@ -127,6 +157,19 @@ func (u *attachmentUseCase) UpdateAttachment(dto *dtos.UpdateAttachmentDto) erro
 	return u.attachmentRepo.Update(attachment)
 }
 
+func (u *attachmentUseCase) LinkAttachmentToUser(attachmentID uint, userID uint) error {
+	attachment, err := u.attachmentRepo.GetByID(attachmentID)
+	if err != nil {
+		return err
+	}
+
+	ownerType := "user"
+	attachment.OwnerID = &userID
+	attachment.OwnerType = &ownerType
+
+	return u.attachmentRepo.Update(attachment)
+}
+
 func (u *attachmentUseCase) DeleteAttachment(id uint) error {
 	return u.attachmentRepo.Delete(id)
 }
@@ -140,10 +183,18 @@ func (u *attachmentUseCase) enrichAttachment(attachment *entities.Attachment) (*
 	}
 
 	bucketName := u.cfg.MinioBucketName
-	fileURL, err := u.storageService.GetPresignedURL(context.Background(), bucketName, attachment.ObjectKey, time.Hour*1)
+	fileURL, err := u.storageService.GetPresignedURL(context.Background(), bucketName, attachment.ObjectKey, time.Hour*24)
 	if err != nil {
 		return nil, err
 	}
 
 	return transforms.ToGetAttachmentResponseDto(attachment, fileURL), nil
+}
+
+func (u *attachmentUseCase) GenerateFileURL(objectKey string) (string, error) {
+	if objectKey == "" {
+		return "", errors.New("empty object key")
+	}
+	bucketName := u.cfg.MinioBucketName
+	return u.storageService.GetPresignedURL(context.Background(), bucketName, objectKey, time.Hour*24)
 }

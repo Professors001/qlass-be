@@ -30,8 +30,7 @@ func (r *postgresUserRepository) Create(user *entities.User) error {
 func (r *postgresUserRepository) GetByEmail(email string) (*entities.User, error) {
 	var user entities.User
 
-	// SELECT * FROM users WHERE email = ? LIMIT 1
-	if err := r.db.Where("email = ?", email).First(&user).Error; err != nil {
+	if err := r.db.Preload("ProfileImgAttachment").Where("email = ?", email).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("user not found")
 		}
@@ -45,8 +44,7 @@ func (r *postgresUserRepository) GetByEmail(email string) (*entities.User, error
 func (r *postgresUserRepository) GetByID(id uint) (*entities.User, error) {
 	var user entities.User
 
-	// SELECT * FROM users WHERE id = ?
-	if err := r.db.First(&user, id).Error; err != nil {
+	if err := r.db.Preload("ProfileImgAttachment").First(&user, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("user not found")
 		}
@@ -56,11 +54,11 @@ func (r *postgresUserRepository) GetByID(id uint) (*entities.User, error) {
 	return &user, nil
 }
 
+// GetByUniID finds a user by their university ID
 func (r *postgresUserRepository) GetByUniID(universityID string) (*entities.User, error) {
 	var user entities.User
 
-	// Load full user by University ID so response fields are populated
-	if err := r.db.Where("university_id = ?", universityID).First(&user).Error; err != nil {
+	if err := r.db.Preload("ProfileImgAttachment").Where("university_id = ?", universityID).First(&user).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, errors.New("user not found")
 		}
@@ -68,4 +66,31 @@ func (r *postgresUserRepository) GetByUniID(universityID string) (*entities.User
 	}
 
 	return &user, nil
+}
+
+// GetAll fetches all users from the database
+func (r *postgresUserRepository) GetAll() ([]*entities.User, error) {
+	var users []*entities.User
+
+	if err := r.db.Preload("ProfileImgAttachment").Find(&users).Error; err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
+
+func (r *postgresUserRepository) Update(user *entities.User) error {
+	// GORM handles the SQL Update automatically
+	if err := r.db.Save(user).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *postgresUserRepository) Delete(id uint) error {
+	// GORM handles the SQL Delete automatically
+	if err := r.db.Delete(&entities.User{}, id).Error; err != nil {
+		return err
+	}
+	return nil
 }

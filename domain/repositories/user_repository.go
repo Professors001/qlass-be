@@ -7,4 +7,8 @@ type UserRepository interface {
 	GetByEmail(email string) (*entities.User, error)
 	GetByID(id uint) (*entities.User, error)
 	GetByUniID(uuid string) (*entities.User, error)
+	GetAll() ([]*entities.User, error)
+
+	Update(user *entities.User) error
+	Delete(id uint) error
 }

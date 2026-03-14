@@ -2,6 +2,7 @@ package config
 
 import (
 	"log"
+	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -12,14 +13,16 @@ type Config struct {
 	AppEnv  string `mapstructure:"APP_ENV"`
 
 	// Database Settings
-	DBHost     string `mapstructure:"DB_HOST"`
-	DBPort     string `mapstructure:"DB_PORT"`
-	DBUser     string `mapstructure:"DB_USER"`
-	DBPassword string `mapstructure:"DB_PASSWORD"`
-	DBName     string `mapstructure:"DB_NAME"`
-	DBSSLMode  string `mapstructure:"DB_SSLMODE"`
+	SupabaseURL string `mapstructure:"SUPABASE_URL"`
+	DBHost      string `mapstructure:"DB_HOST"`
+	DBPort      string `mapstructure:"DB_PORT"`
+	DBUser      string `mapstructure:"DB_USER"`
+	DBPassword  string `mapstructure:"DB_PASSWORD"`
+	DBName      string `mapstructure:"DB_NAME"`
+	DBSSLMode   string `mapstructure:"DB_SSLMODE"`
 
 	// Redis Settings
+	RedisURL      string `mapstructure:"REDIS_URL"`
 	RedisHost     string `mapstructure:"REDIS_HOST"`
 	RedisPort     string `mapstructure:"REDIS_PORT"`
 	RedisUsername string `mapstructure:"REDIS_USERNAME"`
@@ -31,23 +34,44 @@ type Config struct {
 
 	// MinIO Settings
 	MinioEndpoint   string `mapstructure:"MINIO_ENDPOINT"`
+	MinioRegion     string `mapstructure:"MINIO_REGION"`
 	MinioAccessKey  string `mapstructure:"MINIO_ROOT_USER"`
 	MinioSecretKey  string `mapstructure:"MINIO_ROOT_PASSWORD"`
 	MinioBucketName string `mapstructure:"MINIO_BUCKET_NAME"`
 	MinioUseSSL     bool   `mapstructure:"MINIO_USE_SSL"`
+
+	SMTPHost string `mapstructure:"SMTP_HOST"`
+	SMTPPort string `mapstructure:"SMTP_PORT"`
+	SMTPUser string `mapstructure:"SMTP_USER"`
+	SMTPPass string `mapstructure:"SMTP_PASS"`
 }
 
 // LoadConfig reads configuration from .env file or environment variables
 func LoadConfig() *Config {
-	viper.AutomaticEnv() // Automatically read environment variables (docker)
+	viper.AutomaticEnv()
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
-	// 1. Try to load .env from current directory
+	// Explicitly bind env vars
+	viper.BindEnv("APP_PORT")
+	viper.BindEnv("APP_ENV")
+	viper.BindEnv("SUPABASE_URL")
+	viper.BindEnv("JWT_SECRET")
+	viper.BindEnv("REDIS_URL")
+	viper.BindEnv("MINIO_ENDPOINT")
+	viper.BindEnv("MINIO_ROOT_USER")
+	viper.BindEnv("MINIO_ROOT_PASSWORD")
+	viper.BindEnv("MINIO_BUCKET_NAME")
+	viper.BindEnv("MINIO_USE_SSL")
+	viper.BindEnv("SMTP_HOST")
+	viper.BindEnv("SMTP_PORT")
+	viper.BindEnv("SMTP_USER")
+	viper.BindEnv("SMTP_PASS")
+
+	// Try .env files (local dev only)
 	viper.SetConfigFile(".env")
 	if err := viper.ReadInConfig(); err != nil {
-		// 2. If failed, try loading from parent directory (for tests)
 		viper.SetConfigFile("../.env")
 		if err := viper.ReadInConfig(); err != nil {
-			// 3. If failed, try loading from two levels up (for nested tests like infrastructure/cache)
 			viper.SetConfigFile("../../.env")
 			if err := viper.ReadInConfig(); err != nil {
 				log.Println("⚠️  No .env file found, relying on system environment variables")
@@ -61,12 +85,17 @@ func LoadConfig() *Config {
 	}
 
 	// Basic validation
-	if config.DBHost == "" || config.DBPort == "" {
-		log.Fatal("❌ Database configuration is missing. Check your .env file.")
+	hasDBURL := config.SupabaseURL != ""
+	if !hasDBURL && (config.DBHost == "" || config.DBPort == "") {
+		log.Fatal("❌ Database configuration is missing. Set SUPABASE_URL or DB_HOST and DB_PORT.")
 	}
 
 	if config.MinioEndpoint == "" {
 		log.Fatal("❌ MinIO configuration is missing. Check MINIO_ENDPOINT in your .env file.")
+	}
+
+	if config.SMTPHost == "" {
+		log.Fatal("❌ SMTP configuration is missing. Check SMTP_HOST in your .env file.")
 	}
 
 	// Fix: Redis default user does not need a username.

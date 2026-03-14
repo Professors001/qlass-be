@@ -9,6 +9,8 @@ import (
 	"qlass-be/dtos"
 	"qlass-be/middleware"
 	"qlass-be/transforms"
+	"qlass-be/utils"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -19,19 +21,31 @@ type UserUseCase interface {
 	RegisterSecondStep(ctx context.Context, req *dtos.RegisterRequestStepTwoDto) (*dtos.ResponseRegisterStepTwoDto, error)
 	Login(ctx context.Context, req *dtos.LoginRequestDto) (*dtos.LoginResponseDto, error)
 	CreateTeacher(ctx context.Context, req *dtos.CreateTeacherRequestDto) (*dtos.CreateTeacherResponseDto, error)
+	UpdateUser(req *dtos.UpdateUserRequestDto, userID uint) (*dtos.UserDisplayData, error)
+	ChangePassword(req *dtos.ChangePasswordRequestDto, userID uint) (*dtos.ChangePasswordResponseDto, error)
+	ForgetPasswordStep1(ctx context.Context, req *dtos.ForgetPasswordStep1RequestDto) (*dtos.ForgetPasswordStep1ResponseDto, error)
+	ForgetPasswordStep2(ctx context.Context, req *dtos.ForgetPasswordStep2RequestDto) (*dtos.ForgetPasswordStep2ResponseDto, error)
+	AdminUpdateUser(req *dtos.AdminUpdateUserRequestDto) error
+	GetProfileImgUrlByUserID(userID uint) string
+	GetUserData(userID uint) (*dtos.UserDisplayData, error)
+	GetAllUsers() ([]*dtos.UserDisplayData, error)
 }
 
 type userUseCase struct {
-	userRepo      repositories.UserRepository
-	userCacheRepo repositories.UserCacheRepository
-	jwtService    middleware.JwtService
+	userRepo          repositories.UserRepository
+	userCacheRepo     repositories.UserCacheRepository
+	jwtService        middleware.JwtService
+	emailService      EmailService
+	attachmentUseCase AttachmentUseCase
 }
 
-func NewUserUseCase(repo repositories.UserRepository, cacheRepo repositories.UserCacheRepository, jwtService middleware.JwtService) UserUseCase {
+func NewUserUseCase(repo repositories.UserRepository, cacheRepo repositories.UserCacheRepository, jwtService middleware.JwtService, email EmailService, attachmentUC AttachmentUseCase) UserUseCase {
 	return &userUseCase{
-		userRepo:      repo,
-		userCacheRepo: cacheRepo,
-		jwtService:    jwtService,
+		userRepo:          repo,
+		userCacheRepo:     cacheRepo,
+		jwtService:        jwtService,
+		emailService:      email,
+		attachmentUseCase: attachmentUC,
 	}
 }
 
@@ -58,7 +72,15 @@ func (u *userUseCase) RegisterFirstStep(ctx context.Context, req *dtos.RegisterR
 		return nil, err
 	}
 
-	tempData := transforms.RequestToTempRegisterDataDto(req, string(hashedPassword), "123456")
+	otp := utils.GenerateRandomString(6)
+
+	tempData := transforms.RequestToTempRegisterDataDto(req, string(hashedPassword), otp)
+
+	err = u.emailService.SendOTP(req.Email, otp)
+	if err != nil {
+		log.Println("Error sending OTP email:", err)
+		return nil, err
+	}
 
 	// Store into Redis with Email as key (TTL 5 minutes)
 	err = u.userCacheRepo.SetRegistrationData(ctx, req.Email, tempData, 5*time.Minute)
@@ -81,13 +103,12 @@ func (u *userUseCase) RegisterSecondStep(ctx context.Context, req *dtos.Register
 		return nil, errors.New("no pending registration found or OTP expired")
 	}
 
-	// Validate OTP
 	if tempData.OTP != req.OTP {
 		return nil, errors.New("invalid OTP")
 	}
 
-	// Create user in DB
 	newUser := transforms.TempRegisterDataDtoToUserEntity(tempData)
+
 	err = u.userRepo.Create(newUser)
 	if err != nil {
 		log.Println("Error creating user in DB:", err)
@@ -97,29 +118,44 @@ func (u *userUseCase) RegisterSecondStep(ctx context.Context, req *dtos.Register
 	return &dtos.ResponseRegisterStepTwoDto{
 		Message: "Registration successful",
 	}, nil
-
 }
 
 func (u *userUseCase) Login(ctx context.Context, req *dtos.LoginRequestDto) (*dtos.LoginResponseDto, error) {
-	// Retrieve user by email
-	user, err := u.userRepo.GetByUniID(req.UniversityID)
+	var user *entities.User
+	var err error
+
+	if strings.Contains(req.Identifier, "@") {
+		log.Println("Login attempt with Email:", req.Identifier)
+		user, err = u.userRepo.GetByEmail(req.Identifier)
+	} else {
+		log.Println("Login attempt with University ID:", req.Identifier)
+		user, err = u.userRepo.GetByUniID(req.Identifier)
+	}
+
 	if err != nil {
 		return nil, errors.New("This Account is not registered")
 	}
 
-	// Compare password
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password))
 	if err != nil {
 		return nil, errors.New("Incorrect password")
 	}
 
-	userDisplay := dtos.UserDisplayData{
-		UniversityID: user.UniversityID,
-		Email:        user.Email,
-		FirstName:    user.FirstName,
-		LastName:     user.LastName,
-		Role:         user.Role,
+	var profileImgURL string
+	if user.ProfileImgAttachment != nil && user.ProfileImgAttachment.ObjectKey != "" {
+		url, err := u.attachmentUseCase.GenerateFileURL(user.ProfileImgAttachment.ObjectKey)
+		if err == nil {
+			profileImgURL = url
+		} else {
+			log.Println("Error generating profile image URL:", err)
+		}
 	}
+
+	if profileImgURL == "" {
+		profileImgURL = "https://ui-avatars.com/api/?name=" + user.FirstName + "+" + user.LastName
+	}
+
+	userDisplay := transforms.UserEntityToUserDisplayResponse(user, profileImgURL)
 
 	token, err := u.jwtService.GenerateToken(user.ID, user.Role)
 	if err != nil {
@@ -129,7 +165,7 @@ func (u *userUseCase) Login(ctx context.Context, req *dtos.LoginRequestDto) (*dt
 	return &dtos.LoginResponseDto{
 		Message: "Login successful",
 		Token:   token,
-		User:    userDisplay,
+		User:    *userDisplay,
 	}, nil
 }
 
@@ -149,15 +185,14 @@ func (u *userUseCase) CreateTeacher(ctx context.Context, req *dtos.CreateTeacher
 	}
 
 	teacher := &entities.User{
-		UniversityID:  req.UniversityID,
-		Email:         req.Email,
-		PasswordHash:  string(hashedPassword),
-		FirstName:     req.FirstName,
-		LastName:      req.LastName,
-		Role:          "teacher",
-		IsVerified:    false,
-		IsActive:      true,
-		ProfileImgURL: "https://ui-avatars.com/api/?name=" + req.FirstName + "+" + req.LastName,
+		UniversityID: req.UniversityID,
+		Email:        req.Email,
+		PasswordHash: string(hashedPassword),
+		FirstName:    req.FirstName,
+		LastName:     req.LastName,
+		Role:         "teacher",
+		IsVerified:   true,
+		IsActive:     true,
 	}
 
 	if err := u.userRepo.Create(teacher); err != nil {
@@ -169,4 +204,249 @@ func (u *userUseCase) CreateTeacher(ctx context.Context, req *dtos.CreateTeacher
 		Message: "Teacher created successfully",
 		UserID:  teacher.ID,
 	}, nil
+}
+
+func (u *userUseCase) UpdateUser(req *dtos.UpdateUserRequestDto, userID uint) (*dtos.UserDisplayData, error) {
+	user, err := u.userRepo.GetByID(userID)
+	if err != nil {
+		return nil, errors.New("user not found")
+	}
+
+	if req.FirstName != "" {
+		user.FirstName = req.FirstName
+	}
+	if req.LastName != "" {
+		user.LastName = req.LastName
+	}
+
+	requestedAttachmentID := req.ProfileImgAttachmentID
+	if requestedAttachmentID == 0 {
+		requestedAttachmentID = req.ProfileAttachmentID
+	}
+
+	if requestedAttachmentID > 0 {
+		newAttachment, err := u.attachmentUseCase.GetAttachmentByID(requestedAttachmentID)
+		if err != nil {
+			return nil, errors.New("attachment not found")
+		}
+		if newAttachment.UploaderID != userID {
+			return nil, errors.New("unauthorized attachment")
+		}
+
+		currentAttachmentID := uint(0)
+		hasCurrentAttachment := user.ProfileImgAttachmentID != nil
+		if hasCurrentAttachment {
+			currentAttachmentID = *user.ProfileImgAttachmentID
+		}
+
+		if !hasCurrentAttachment || requestedAttachmentID != currentAttachmentID {
+			newAttachmentID := requestedAttachmentID
+			if err := u.attachmentUseCase.LinkAttachmentToUser(newAttachmentID, userID); err != nil {
+				return nil, err
+			}
+			user.ProfileImgAttachmentID = &newAttachmentID
+
+			if hasCurrentAttachment {
+				if err := u.attachmentUseCase.DeleteAttachment(currentAttachmentID); err != nil {
+					log.Println("Error deleting attachment:", err)
+					return nil, err
+				}
+			}
+		}
+	}
+
+	if err := u.userRepo.Update(user); err != nil {
+		log.Println("Error updating user:", err)
+		return nil, err
+	}
+
+	var profileImgURL string
+	if user.ProfileImgAttachmentID != nil {
+		if attachment, err := u.attachmentUseCase.GetAttachmentByID(*user.ProfileImgAttachmentID); err == nil {
+			profileImgURL = attachment.FileURL
+		}
+	}
+
+	return transforms.UserEntityToUserDisplayResponse(user, profileImgURL), nil
+}
+
+func (u *userUseCase) ChangePassword(req *dtos.ChangePasswordRequestDto, userID uint) (*dtos.ChangePasswordResponseDto, error) {
+	user, err := u.userRepo.GetByID(userID)
+	if err != nil {
+		return nil, errors.New("This Account is not registered")
+	}
+
+	// Compare password
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.CurrentPassword))
+	if err != nil {
+		return nil, errors.New("Incorrect password")
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+	user.PasswordHash = string(hashedPassword)
+
+	if err := u.userRepo.Update(user); err != nil {
+		log.Println("Error updating user:", err)
+		return nil, err
+	}
+
+	return &dtos.ChangePasswordResponseDto{
+		Message: "Password changed successfully",
+	}, nil
+}
+
+func (u *userUseCase) ForgetPasswordStep1(ctx context.Context, req *dtos.ForgetPasswordStep1RequestDto) (*dtos.ForgetPasswordStep1ResponseDto, error) {
+	user, err := u.userRepo.GetByUniID(req.UniversityID)
+	if err != nil {
+		return nil, errors.New("This Account is not registered")
+	}
+
+	otp := utils.GenerateRandomString(6)
+
+	err = u.emailService.SendOTP(user.Email, otp)
+
+	tempData := &dtos.TempForgetPasswordData{
+		UniversityID: user.UniversityID,
+		OTP:          otp,
+		User:         *user,
+	}
+
+	err = u.userCacheRepo.SetForgetPasswordData(ctx, user.UniversityID, tempData, 5*time.Minute)
+	if err != nil {
+		log.Println("Error storing registration data in cache:", err)
+		return nil, err
+	}
+
+	return &dtos.ForgetPasswordStep1ResponseDto{
+		Message: "Please proceed to step 2",
+		Email:   user.Email,
+	}, nil
+}
+
+func (u *userUseCase) ForgetPasswordStep2(ctx context.Context, req *dtos.ForgetPasswordStep2RequestDto) (*dtos.ForgetPasswordStep2ResponseDto, error) {
+	tempData, err := u.userCacheRepo.GetForgetPasswordData(ctx, req.UniversityID)
+	if err != nil {
+		return nil, errors.New("no pending registration found or OTP expired")
+	}
+
+	// Validate OTP
+	if tempData.OTP != req.OTP {
+		return nil, errors.New("invalid OTP")
+	}
+
+	user := tempData.User
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+	user.PasswordHash = string(hashedPassword)
+
+	if err := u.userRepo.Update(&user); err != nil {
+		log.Println("Error updating user:", err)
+		return nil, err
+	}
+
+	return &dtos.ForgetPasswordStep2ResponseDto{
+		Message: "Password changed successfully",
+	}, nil
+}
+
+func (u *userUseCase) AdminUpdateUser(req *dtos.AdminUpdateUserRequestDto) error {
+	user, err := u.userRepo.GetByID(req.UserID)
+	if err != nil {
+		return errors.New("user not found")
+	}
+
+	if req.UniversityID != "" && req.UniversityID != user.UniversityID {
+		duplicatedUser, _ := u.userRepo.GetByUniID(req.UniversityID)
+		if duplicatedUser != nil {
+			return errors.New("university ID already exists")
+		}
+
+		user.UniversityID = req.UniversityID
+	}
+	if req.Email != "" && req.Email != user.Email {
+		duplicatedUser, _ := u.userRepo.GetByEmail(req.Email)
+		if duplicatedUser != nil {
+			return errors.New("email already exists")
+		}
+
+		user.Email = req.Email
+		user.IsVerified = false
+	}
+	if req.NewPassword != "" {
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+		if err != nil {
+			return err
+		}
+		user.PasswordHash = string(hashedPassword)
+	}
+	if req.FirstName != "" && req.FirstName != user.FirstName {
+		user.FirstName = req.FirstName
+	}
+	if req.LastName != "" && req.LastName != user.LastName {
+		user.LastName = req.LastName
+	}
+	if req.Role != "" && req.Role != user.Role {
+		user.Role = req.Role
+	}
+
+	err = u.userRepo.Update(user)
+
+	if err != nil {
+		log.Println("Error updating user:", err)
+		return err
+	}
+
+	return nil
+}
+
+func (u *userUseCase) GetProfileImgUrlByUserID(userID uint) string {
+	owner, err := u.userRepo.GetByID(userID)
+	if err != nil || owner == nil {
+		return ""
+	}
+
+	var profileImgURL string
+	if owner.ProfileImgAttachment != nil && owner.ProfileImgAttachment.ObjectKey != "" {
+		url, err := u.attachmentUseCase.GenerateFileURL(owner.ProfileImgAttachment.ObjectKey)
+		if err == nil {
+			profileImgURL = url
+		}
+	}
+
+	if profileImgURL == "" {
+		profileImgURL = "https://ui-avatars.com/api/?name=" + owner.FirstName + "+" + owner.LastName
+	}
+
+	return profileImgURL
+}
+
+func (u *userUseCase) GetUserData(userID uint) (*dtos.UserDisplayData, error) {
+	user, err := u.userRepo.GetByID(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	imgUrl := u.GetProfileImgUrlByUserID(userID)
+	return transforms.UserEntityToUserDisplayResponse(user, imgUrl), nil
+}
+
+func (u *userUseCase) GetAllUsers() ([]*dtos.UserDisplayData, error) {
+	users, err := u.userRepo.GetAll()
+	if err != nil {
+		return nil, err
+	}
+
+	var result []*dtos.UserDisplayData
+	for _, user := range users {
+		imgUrl := u.GetProfileImgUrlByUserID(user.ID)
+		result = append(result, transforms.UserEntityToUserDisplayResponse(user, imgUrl))
+	}
+
+	return result, nil
 }
