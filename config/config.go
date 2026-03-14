@@ -22,6 +22,7 @@ type Config struct {
 	DBSSLMode   string `mapstructure:"DB_SSLMODE"`
 
 	// Redis Settings
+	RedisURL      string `mapstructure:"REDIS_URL"`
 	RedisHost     string `mapstructure:"REDIS_HOST"`
 	RedisPort     string `mapstructure:"REDIS_PORT"`
 	RedisUsername string `mapstructure:"REDIS_USERNAME"`
