@@ -72,7 +72,7 @@ func (u *userUseCase) RegisterFirstStep(ctx context.Context, req *dtos.RegisterR
 		return nil, err
 	}
 
-	otp := utils.GenerateRandomString(6)
+	otp := utils.GenerateNumericString(6)
 
 	tempData := transforms.RequestToTempRegisterDataDto(req, string(hashedPassword), otp)
 
