@@ -74,6 +74,9 @@ func (u *classMaterialUseCase) CreateClassMaterial(dto *dtos.CreateClassMaterial
 		classMaterial.IsPublished = true
 		now := time.Now()
 		classMaterial.PublishedAt = &now
+	} else {
+		classMaterial.IsPublished = false
+		classMaterial.PublishedAt = nil
 	}
 
 	err = u.classMaterialRepo.Create(classMaterial)
@@ -121,6 +124,9 @@ func (u *classMaterialUseCase) CreateQuizMaterial(dto dtos.CreateQuizClassMateri
 		now := time.Now()
 		material.PublishedAt = &now
 		material.IsPublished = true
+	} else {
+		material.IsPublished = false
+		material.PublishedAt = nil
 	}
 
 	if err := u.classMaterialRepo.Create(material); err != nil {
