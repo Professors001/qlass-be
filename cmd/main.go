@@ -23,7 +23,6 @@ func main() {
 	db := config.NewPostgresDB(cfg)
 	redisClient := config.NewRedisClient(cfg)
 	jwtService := middleware.NewJWTService(cfg)
-	minioClient := config.NewMinioClient(cfg)
 
 	// Verify Redis connection
 	if err := redisClient.Ping(context.Background()).Err(); err != nil {
@@ -49,6 +48,8 @@ func main() {
 		storageService = storageServiceSupabase
 		log.Println("✅ Using Supabase S3 storage backend")
 	} else {
+		minioClient := config.NewMinioClient(cfg)
+
 		exists, err := minioClient.BucketExists(context.Background(), cfg.MinioBucketName)
 		if err != nil {
 			log.Printf("⚠️  Error checking MinIO bucket: %v", err)
