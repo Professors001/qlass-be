@@ -428,6 +428,8 @@ func checkOrigin(r *http.Request) bool {
 		return true
 	case "http://localhost:8080":
 		return true
+	case "https://qlass-fe.vercel.app":
+		return true
 	case "":
 		return true
 	default:
