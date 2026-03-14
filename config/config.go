@@ -2,6 +2,7 @@ package config
 
 import (
 	"log"
+	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -12,7 +13,6 @@ type Config struct {
 	AppEnv  string `mapstructure:"APP_ENV"`
 
 	// Database Settings
-	DatabaseURL string `mapstructure:"DATABASE_URL"`
 	SupabaseURL string `mapstructure:"SUPABASE_URL"`
 	DBHost      string `mapstructure:"DB_HOST"`
 	DBPort      string `mapstructure:"DB_PORT"`
@@ -48,15 +48,30 @@ type Config struct {
 
 // LoadConfig reads configuration from .env file or environment variables
 func LoadConfig() *Config {
-	viper.AutomaticEnv() // Automatically read environment variables (docker)
+	viper.AutomaticEnv()
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
-	// 1. Try to load .env from current directory
+	// Explicitly bind env vars
+	viper.BindEnv("APP_PORT")
+	viper.BindEnv("APP_ENV")
+	viper.BindEnv("SUPABASE_URL")
+	viper.BindEnv("JWT_SECRET")
+	viper.BindEnv("REDIS_URL")
+	viper.BindEnv("MINIO_ENDPOINT")
+	viper.BindEnv("MINIO_ROOT_USER")
+	viper.BindEnv("MINIO_ROOT_PASSWORD")
+	viper.BindEnv("MINIO_BUCKET_NAME")
+	viper.BindEnv("MINIO_USE_SSL")
+	viper.BindEnv("SMTP_HOST")
+	viper.BindEnv("SMTP_PORT")
+	viper.BindEnv("SMTP_USER")
+	viper.BindEnv("SMTP_PASS")
+
+	// Try .env files (local dev only)
 	viper.SetConfigFile(".env")
 	if err := viper.ReadInConfig(); err != nil {
-		// 2. If failed, try loading from parent directory (for tests)
 		viper.SetConfigFile("../.env")
 		if err := viper.ReadInConfig(); err != nil {
-			// 3. If failed, try loading from two levels up (for nested tests like infrastructure/cache)
 			viper.SetConfigFile("../../.env")
 			if err := viper.ReadInConfig(); err != nil {
 				log.Println("⚠️  No .env file found, relying on system environment variables")
@@ -70,9 +85,9 @@ func LoadConfig() *Config {
 	}
 
 	// Basic validation
-	hasDBURL := config.DatabaseURL != "" || config.SupabaseURL != ""
+	hasDBURL := config.SupabaseURL != ""
 	if !hasDBURL && (config.DBHost == "" || config.DBPort == "") {
-		log.Fatal("❌ Database configuration is missing. Set DATABASE_URL/SUPABASE_URL or DB_HOST and DB_PORT.")
+		log.Fatal("❌ Database configuration is missing. Set SUPABASE_URL or DB_HOST and DB_PORT.")
 	}
 
 	if config.MinioEndpoint == "" {
